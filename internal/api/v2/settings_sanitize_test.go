@@ -49,6 +49,8 @@ func settingsWithSecrets(t *testing.T) *conf.Settings {
 	s.Output.MySQL.Username = "dbuser"
 	s.Output.MySQL.Password = "db-password"
 	s.Output.MySQL.Host = "db.local"
+	s.Output.PostgreSQL.Password = "pg-password"
+	s.Output.PostgreSQL.Username = "pguser"
 
 	// Weather API keys
 	s.Realtime.Weather.OpenWeather.APIKey = "ow-api-key-123"
@@ -151,6 +153,8 @@ func TestSanitizeSettingsForAPI_RedactsAllSecrets(t *testing.T) {
 	// --- MySQL ---
 	assert.Equal(t, redactedValue, sanitized.Output.MySQL.Password, "mysql.password must be redacted")
 	assert.Equal(t, "dbuser", sanitized.Output.MySQL.Username, "mysql.username should be preserved")
+	assert.Equal(t, redactedValue, sanitized.Output.PostgreSQL.Password, "postgresql.password must be redacted")
+	assert.Equal(t, "pguser", sanitized.Output.PostgreSQL.Username, "postgresql.username should be preserved")
 
 	// --- Weather API keys ---
 	assert.Equal(t, redactedValue, sanitized.Realtime.Weather.OpenWeather.APIKey, "openWeather.apiKey must be redacted")
@@ -188,6 +192,7 @@ func TestSanitizeSettingsForAPI_DoesNotMutateOriginal(t *testing.T) {
 	origPassword := original.Security.BasicAuth.Password
 	origMQTTPassword := original.Realtime.MQTT.Password
 	origMySQLPassword := original.Output.MySQL.Password
+	origPostgreSQLPassword := original.Output.PostgreSQL.Password
 	origOAuthSecret := original.Security.OAuthProviders[0].ClientSecret
 	origWebhookToken := original.Notification.Push.Providers[0].Endpoints[0].Auth.Token
 	origFTPPassword := original.Backup.Targets[0].Settings["password"]
@@ -199,6 +204,7 @@ func TestSanitizeSettingsForAPI_DoesNotMutateOriginal(t *testing.T) {
 	assert.Equal(t, origPassword, original.Security.BasicAuth.Password, "original basicAuth.password mutated")
 	assert.Equal(t, origMQTTPassword, original.Realtime.MQTT.Password, "original mqtt.password mutated")
 	assert.Equal(t, origMySQLPassword, original.Output.MySQL.Password, "original mysql.password mutated")
+	assert.Equal(t, origPostgreSQLPassword, original.Output.PostgreSQL.Password, "original postgresql.password mutated")
 	assert.Equal(t, origOAuthSecret, original.Security.OAuthProviders[0].ClientSecret, "original oauthProviders[0].clientSecret mutated")
 	assert.Equal(t, origWebhookToken, original.Notification.Push.Providers[0].Endpoints[0].Auth.Token, "original webhook token mutated")
 	assert.Equal(t, origFTPPassword, original.Backup.Targets[0].Settings["password"], "original ftp password mutated")
@@ -222,6 +228,7 @@ func TestSanitizeSettingsForAPI_EmptySecretsStayEmpty(t *testing.T) {
 	assert.Empty(t, sanitized.Security.GoogleAuth.ClientSecret, "empty googleAuth secret should stay empty")
 	assert.Empty(t, sanitized.Realtime.MQTT.Password, "empty mqtt password should stay empty")
 	assert.Empty(t, sanitized.Output.MySQL.Password, "empty mysql password should stay empty")
+	assert.Empty(t, sanitized.Output.PostgreSQL.Password, "empty postgresql password should stay empty")
 	assert.Empty(t, sanitized.Realtime.Weather.OpenWeather.APIKey, "empty openweather key should stay empty")
 	assert.Empty(t, sanitized.Realtime.EBird.APIKey, "empty ebird key should stay empty")
 }
@@ -333,6 +340,7 @@ func TestValidateNoRedactedSentinels_ReportsAndClearsEverySecret(t *testing.T) {
 		"diagnostics.profiling.token",
 		"realtime.mqtt.password",
 		"output.mysql.password",
+		"output.postgresql.password",
 		"realtime.weather.openWeather.apiKey",
 		"realtime.weather.wunderground.apiKey",
 		"realtime.weather.pirateWeather.apiKey",
@@ -365,6 +373,7 @@ func TestRestoreRedactedSecrets_PreservesRealValues(t *testing.T) {
 	incoming.Security.GoogleAuth.ClientSecret = redactedValue
 	incoming.Realtime.MQTT.Password = redactedValue
 	incoming.Output.MySQL.Password = redactedValue
+	incoming.Output.PostgreSQL.Password = redactedValue
 	incoming.Realtime.Weather.OpenWeather.APIKey = redactedValue
 	incoming.Realtime.EBird.APIKey = redactedValue
 	incoming.Security.OAuthProviders[0].ClientSecret = redactedValue
@@ -379,6 +388,7 @@ func TestRestoreRedactedSecrets_PreservesRealValues(t *testing.T) {
 	assert.Equal(t, "google-secret", incoming.Security.GoogleAuth.ClientSecret)
 	assert.Equal(t, "mqtt-password", incoming.Realtime.MQTT.Password)
 	assert.Equal(t, "db-password", incoming.Output.MySQL.Password)
+	assert.Equal(t, "pg-password", incoming.Output.PostgreSQL.Password)
 	assert.Equal(t, "ow-api-key-123", incoming.Realtime.Weather.OpenWeather.APIKey)
 	assert.Equal(t, "ebird-api-key-789", incoming.Realtime.EBird.APIKey)
 	assert.Equal(t, "goog-secret", incoming.Security.OAuthProviders[0].ClientSecret)

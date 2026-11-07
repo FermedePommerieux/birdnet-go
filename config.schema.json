@@ -1623,6 +1623,43 @@
       "type": "object",
       "description": "PirateWeatherSettings contains settings for Pirate Weather integration."
     },
+    "PostgreSQLSettings": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "sslmode": {
+          "type": "string"
+        },
+        "sslrootcert": {
+          "type": "string"
+        },
+        "sslcert": {
+          "type": "string"
+        },
+        "sslkey": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "description": "PostgreSQLSettings configures the v2 PostgreSQL database connection."
+    },
     "PrivacyFilterSettings": {
       "properties": {
         "debug": {
@@ -2427,6 +2464,9 @@
               },
               "additionalProperties": false,
               "type": "object"
+            },
+            "postgresql": {
+              "$ref": "#/$defs/PostgreSQLSettings"
             }
           },
           "additionalProperties": false,

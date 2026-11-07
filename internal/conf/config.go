@@ -2084,6 +2084,8 @@ type Settings struct {
 			Host     string `yaml:"host" json:"host"`         // host for mysql database
 			Port     string `yaml:"port" json:"port"`         // port for mysql database
 		} `yaml:"mysql" json:"mysql"`
+
+		PostgreSQL PostgreSQLSettings `yaml:"postgresql" json:"postgresql"`
 	} `yaml:"output" json:"output"`
 
 	Backup BackupConfig `yaml:"backup" json:"backup"` // Backup configuration

@@ -50,6 +50,17 @@ const (
 	ConfigKeySecurityTLSMode  = "security.tlsmode"
 	ConfigKeySecurityTLSPort  = "security.tlsport"
 	ConfigKeySecurityRedirect = "security.redirecttohttps"
+
+	ConfigKeyPostgreSQLEnabled     = "output.postgresql.enabled"
+	ConfigKeyPostgreSQLUsername    = "output.postgresql.username"
+	ConfigKeyPostgreSQLPassword    = "output.postgresql.password"
+	ConfigKeyPostgreSQLDatabase    = "output.postgresql.database"
+	ConfigKeyPostgreSQLHost        = "output.postgresql.host"
+	ConfigKeyPostgreSQLPort        = "output.postgresql.port"
+	ConfigKeyPostgreSQLSSLMode     = "output.postgresql.sslmode"
+	ConfigKeyPostgreSQLSSLRootCert = "output.postgresql.sslrootcert"
+	ConfigKeyPostgreSQLSSLCert     = "output.postgresql.sslcert"
+	ConfigKeyPostgreSQLSSLKey      = "output.postgresql.sslkey"
 )
 
 // Environment variable names that map to configuration keys.
@@ -87,6 +98,17 @@ const (
 	EnvVarSecurityTLSMode  = "BIRDNET_SECURITY_TLSMODE"
 	EnvVarSecurityTLSPort  = "BIRDNET_SECURITY_TLSPORT"
 	EnvVarSecurityRedirect = "BIRDNET_SECURITY_REDIRECTTOHTTPS"
+
+	EnvVarPostgreSQLEnabled     = "BIRDNET_POSTGRESQL_ENABLED"
+	EnvVarPostgreSQLUsername    = "BIRDNET_POSTGRESQL_USERNAME"
+	EnvVarPostgreSQLPassword    = "BIRDNET_POSTGRESQL_PASSWORD"
+	EnvVarPostgreSQLDatabase    = "BIRDNET_POSTGRESQL_DATABASE"
+	EnvVarPostgreSQLHost        = "BIRDNET_POSTGRESQL_HOST"
+	EnvVarPostgreSQLPort        = "BIRDNET_POSTGRESQL_PORT"
+	EnvVarPostgreSQLSSLMode     = "BIRDNET_POSTGRESQL_SSLMODE"
+	EnvVarPostgreSQLSSLRootCert = "BIRDNET_POSTGRESQL_SSLROOTCERT"
+	EnvVarPostgreSQLSSLCert     = "BIRDNET_POSTGRESQL_SSLCERT"
+	EnvVarPostgreSQLSSLKey      = "BIRDNET_POSTGRESQL_SSLKEY"
 )
 
 // Validation constraint constants for environment variable ranges.
@@ -156,6 +178,17 @@ func getEnvBindings() []envBinding {
 		{ConfigKeySecurityTLSMode, EnvVarSecurityTLSMode, validateEnvTLSMode},
 		{ConfigKeySecurityTLSPort, EnvVarSecurityTLSPort, validateEnvPort},
 		{ConfigKeySecurityRedirect, EnvVarSecurityRedirect, validateEnvBool},
+
+		{ConfigKeyPostgreSQLEnabled, EnvVarPostgreSQLEnabled, validateEnvBool},
+		{ConfigKeyPostgreSQLUsername, EnvVarPostgreSQLUsername, nil},
+		{ConfigKeyPostgreSQLPassword, EnvVarPostgreSQLPassword, nil},
+		{ConfigKeyPostgreSQLDatabase, EnvVarPostgreSQLDatabase, nil},
+		{ConfigKeyPostgreSQLHost, EnvVarPostgreSQLHost, nil},
+		{ConfigKeyPostgreSQLPort, EnvVarPostgreSQLPort, nil},
+		{ConfigKeyPostgreSQLSSLMode, EnvVarPostgreSQLSSLMode, nil},
+		{ConfigKeyPostgreSQLSSLRootCert, EnvVarPostgreSQLSSLRootCert, nil},
+		{ConfigKeyPostgreSQLSSLCert, EnvVarPostgreSQLSSLCert, nil},
+		{ConfigKeyPostgreSQLSSLKey, EnvVarPostgreSQLSSLKey, nil},
 	}
 }
 

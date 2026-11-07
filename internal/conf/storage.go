@@ -648,8 +648,20 @@ func SaveSettings() error {
 // SaveYAMLConfig updates the YAML configuration file with new settings.
 // It overwrites the existing file, not preserving comments or structure.
 func SaveYAMLConfig(configPath string, settings *Settings) error {
+	// An environment override belongs to the process, not the configuration
+	// file. Preserve the file's own PostgreSQL password across every save,
+	// including automatic load-time migrations.
+	toSave := *settings
+	if override, present := os.LookupEnv(EnvVarPostgreSQLPassword); present && override != "" {
+		password, err := postgresFilePassword(configPath)
+		if err != nil {
+			return err
+		}
+		toSave.Output.PostgreSQL.Password = password
+	}
+
 	// Marshal the settings struct to YAML
-	yamlData, err := yaml.Marshal(settings)
+	yamlData, err := yaml.Marshal(&toSave)
 	if err != nil {
 		return errors.New(err).
 			Category(errors.CategoryConfiguration).
@@ -711,4 +723,35 @@ func SaveYAMLConfig(configPath string, settings *Settings) error {
 
 	// If we've reached this point, the operation was successful
 	return nil
+}
+
+// postgresFilePassword reads only the persisted password. An absent file has
+// no password to preserve; errors never include file contents or credentials.
+func postgresFilePassword(configPath string) (string, error) {
+	data, err := os.ReadFile(configPath) //nolint:gosec // configPath is the operator's selected config file
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", errors.Newf("cannot read existing PostgreSQL password").
+			Component("conf").
+			Category(errors.CategoryFileIO).
+			Context("operation", "preserve-postgresql-password").
+			Build()
+	}
+	var onDisk struct {
+		Output struct {
+			PostgreSQL struct {
+				Password string `yaml:"password"`
+			} `yaml:"postgresql"`
+		} `yaml:"output"`
+	}
+	if err := yaml.Unmarshal(data, &onDisk); err != nil {
+		return "", errors.Newf("cannot decode existing PostgreSQL password").
+			Component("conf").
+			Category(errors.CategoryConfiguration).
+			Context("operation", "preserve-postgresql-password").
+			Build()
+	}
+	return onDisk.Output.PostgreSQL.Password, nil
 }

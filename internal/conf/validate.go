@@ -247,6 +247,10 @@ func ValidateSettings(settings *Settings) error {
 		ve.Errors = append(ve.Errors, err.Error())
 	}
 
+	if err := validatePostgreSQLSettings(settings); err != nil {
+		ve.Errors = append(ve.Errors, err.Error())
+	}
+
 	// Validate Realtime settings
 	if err := validateRealtimeSettings(&settings.Realtime); err != nil {
 		ve.Errors = append(ve.Errors, err.Error())

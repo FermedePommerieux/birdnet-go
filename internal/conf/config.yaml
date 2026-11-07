@@ -481,8 +481,7 @@ security:
 
 output:
   file: {}                # file output is configured via CLI flags, not config
-  # Only one database is supported at a time
-  # if both are enabled, SQLite will be used.
+  # Only one database is supported at a time. Disable SQLite before enabling PostgreSQL.
   sqlite:
     enabled: true         # true to enable sqlite output
     path: birdnet.db      # path to sqlite database
@@ -493,6 +492,17 @@ output:
     database: birdnet     # mysql database name
     host: localhost       # mysql database host
     port: "3306"          # mysql database port
+  postgresql:
+    enabled: false        # true to enable PostgreSQL output
+    username: birdnet     # PostgreSQL database username
+    password: ""          # PostgreSQL database password; BIRDNET_POSTGRESQL_PASSWORD can override
+    database: birdnet     # PostgreSQL database name
+    host: localhost       # PostgreSQL database host
+    port: "5432"          # PostgreSQL database port
+    sslmode: verify-full  # disable, require, verify-ca, or verify-full
+    sslrootcert: ""       # optional root CA certificate path
+    sslcert: ""           # optional client certificate path (requires sslkey)
+    sslkey: ""            # optional client key path (requires sslcert)
 
 # Sentry telemetry configuration (opt-in, respects EU privacy laws)
 sentry:

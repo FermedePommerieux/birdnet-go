@@ -412,6 +412,14 @@ func setDefaultConfig() {
 	viper.SetDefault("output.mysql.host", "localhost")
 	viper.SetDefault("output.mysql.port", 3306)
 
+	viper.SetDefault("output.postgresql.enabled", false)
+	viper.SetDefault("output.postgresql.username", "birdnet")
+	viper.SetDefault("output.postgresql.password", "")
+	viper.SetDefault("output.postgresql.database", "birdnet")
+	viper.SetDefault("output.postgresql.host", "localhost")
+	viper.SetDefault("output.postgresql.port", "5432")
+	viper.SetDefault("output.postgresql.sslmode", postgresSSLVerifyFull)
+
 	// Security configuration
 	viper.SetDefault("security.debug", false)
 	viper.SetDefault("security.baseurl", "")

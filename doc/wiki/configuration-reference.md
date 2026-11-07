@@ -457,6 +457,16 @@ DiagnosticsConfig groups the developer-facing diagnostics features.
 | `output.mysql.database` | string |  |
 | `output.mysql.host` | string |  |
 | `output.mysql.port` | string |  |
+| `output.postgresql.enabled` | boolean |  |
+| `output.postgresql.username` | string |  |
+| `output.postgresql.password` | string |  |
+| `output.postgresql.database` | string |  |
+| `output.postgresql.host` | string |  |
+| `output.postgresql.port` | string |  |
+| `output.postgresql.sslmode` | string |  |
+| `output.postgresql.sslrootcert` | string |  |
+| `output.postgresql.sslcert` | string |  |
+| `output.postgresql.sslkey` | string |  |
 
 ## backup
 

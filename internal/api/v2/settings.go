@@ -1731,6 +1731,7 @@ func sanitizeSettingsForAPI(s *conf.Settings) *conf.Settings {
 
 	// --- Database ---
 	sanitized.Output.MySQL.Password = redact(s.Output.MySQL.Password)
+	sanitized.Output.PostgreSQL.Password = redact(s.Output.PostgreSQL.Password)
 
 	// --- Weather API keys ---
 	sanitized.Realtime.Weather.OpenWeather.APIKey = redact(s.Realtime.Weather.OpenWeather.APIKey)
@@ -1843,6 +1844,7 @@ func restoreRedactedSecrets(current, incoming *conf.Settings) error {
 
 	// MySQL
 	restore(&current.Output.MySQL.Password, &incoming.Output.MySQL.Password)
+	restore(&current.Output.PostgreSQL.Password, &incoming.Output.PostgreSQL.Password)
 
 	// Weather API keys
 	restore(&current.Realtime.Weather.OpenWeather.APIKey, &incoming.Realtime.Weather.OpenWeather.APIKey)
@@ -1937,6 +1939,7 @@ func validateNoRedactedSentinels(s *conf.Settings) error {
 	check(s.Diagnostics.Profiling.Token, "diagnostics.profiling.token")
 	check(s.Realtime.MQTT.Password, "realtime.mqtt.password")
 	check(s.Output.MySQL.Password, "output.mysql.password")
+	check(s.Output.PostgreSQL.Password, "output.postgresql.password")
 	check(s.Realtime.Weather.OpenWeather.APIKey, "realtime.weather.openWeather.apiKey")
 	check(s.Realtime.Weather.Wunderground.APIKey, "realtime.weather.wunderground.apiKey")
 	check(s.Realtime.Weather.PirateWeather.APIKey, "realtime.weather.pirateWeather.apiKey")
@@ -2005,6 +2008,7 @@ func clearRedactedSentinels(s *conf.Settings) {
 	clearField(&s.Diagnostics.Profiling.Token)
 	clearField(&s.Realtime.MQTT.Password)
 	clearField(&s.Output.MySQL.Password)
+	clearField(&s.Output.PostgreSQL.Password)
 	clearField(&s.Realtime.Weather.OpenWeather.APIKey)
 	clearField(&s.Realtime.Weather.Wunderground.APIKey)
 	clearField(&s.Realtime.Weather.PirateWeather.APIKey)
@@ -2770,6 +2774,7 @@ func storageNoticeInputsChanged(oldSettings, currentSettings *conf.Settings) boo
 	return oldSettings.Models.Directory != currentSettings.Models.Directory ||
 		oldSettings.Output.SQLite.Path != currentSettings.Output.SQLite.Path ||
 		oldSettings.Output.MySQL.Enabled != currentSettings.Output.MySQL.Enabled ||
+		oldSettings.Output.PostgreSQL.Enabled != currentSettings.Output.PostgreSQL.Enabled ||
 		oldSettings.Realtime.Audio.Export.Enabled != currentSettings.Realtime.Audio.Export.Enabled ||
 		oldSettings.Realtime.Audio.Export.Path != currentSettings.Realtime.Audio.Export.Path
 }
@@ -3160,6 +3165,10 @@ func outputSettingsChanged(oldSettings, currentSettings *conf.Settings) bool {
 		oldOut.MySQL.Database != newOut.MySQL.Database ||
 		oldOut.MySQL.Host != newOut.MySQL.Host ||
 		oldOut.MySQL.Port != newOut.MySQL.Port {
+		return true
+	}
+
+	if oldOut.PostgreSQL != newOut.PostgreSQL {
 		return true
 	}
 

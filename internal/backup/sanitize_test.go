@@ -31,6 +31,7 @@ func TestSanitizeConfigStripsEverySecret(t *testing.T) {
 		"session secret":        "SECRET-session",
 		"profiling token":       "SECRET-profiling-token",
 		"mysql password":        "SECRET-mysql",
+		"postgresql password":   "SECRET-postgresql",
 		"mqtt password":         "SECRET-mqtt",
 		"openweather api key":   "SECRET-openweather",
 		"wunderground api key":  "SECRET-wunderground",
@@ -45,6 +46,7 @@ func TestSanitizeConfigStripsEverySecret(t *testing.T) {
 	settings.Security.SessionSecret = secrets["session secret"]
 	settings.Diagnostics.Profiling.Token = secrets["profiling token"]
 	settings.Output.MySQL.Password = secrets["mysql password"]
+	settings.Output.PostgreSQL.Password = secrets["postgresql password"]
 	settings.Realtime.MQTT.Password = secrets["mqtt password"]
 	settings.Realtime.Weather.OpenWeather.APIKey = secrets["openweather api key"]
 	settings.Realtime.Weather.Wunderground.APIKey = secrets["wunderground api key"]
