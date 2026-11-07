@@ -125,6 +125,8 @@ Docker images are published for `linux/amd64` and `linux/arm64`. Pre-built binar
 - SQLite (default) or MySQL/MariaDB with retry-aware write paths for contention;
   only the tested LTS releases are supported (MySQL 8.4 and 9.7; MariaDB 10.11,
   11.4, 11.8 or 12.3), and MySQL Innovation releases are not supported
+- Experimental PostgreSQL support for the v2 datastore; see the
+  [PostgreSQL configuration and testing guide](doc/wiki/postgresql.md)
 - Automatic backups with real-time status polling
 - Format-aware audio clip export
 - Embedded eBird/Clements taxonomy (2,374 genera, 254 families, 11,145 species) for fast offline lookups
@@ -156,6 +158,7 @@ Docker images are published for `linux/amd64` and `linux/arm64`. Pre-built binar
 - [ONNX Runtime installation](https://github.com/tphakala/birdnet-go/wiki/ONNX-Runtime-Installation)
 - [Detection pipeline](https://github.com/tphakala/birdnet-go/wiki/detection-pipeline)
 - [Database Doctor](https://github.com/tphakala/birdnet-go/wiki/Database-Doctor)
+- [PostgreSQL configuration and testing](doc/wiki/postgresql.md) (experimental)
 - [Training a custom classifier](https://github.com/tphakala/birdnet-go/wiki/Training-a-Custom-Classifier)
 - [Cloudflare Tunnel](https://github.com/tphakala/birdnet-go/wiki/cloudflare_tunnel_guide)
 - [Security](https://github.com/tphakala/birdnet-go/wiki/security)
