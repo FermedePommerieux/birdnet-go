@@ -134,6 +134,9 @@ func (c *Handler) cleanupManager() (datastoreV2.Manager, *legacyCleanupRefusal) 
 	if c.V2Manager == nil {
 		return nil, &legacyCleanupRefusal{reason: reasonNoManager, errorKey: notification.MsgErrCleanupAccessFailed}
 	}
+	if datastoreV2.DialectName(c.V2Manager) == datastoreV2.DialectPostgres {
+		return nil, &legacyCleanupRefusal{reason: reasonFreshInstall, errorKey: notification.MsgErrCleanupSafetyCheck}
+	}
 	return c.V2Manager, nil
 }
 

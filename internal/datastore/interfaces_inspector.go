@@ -26,11 +26,22 @@ type DatabaseInspector interface {
 	GetDetectionRateDaily(days int) ([]DailyCount, error)
 }
 
-// EngineDetails holds engine-specific metadata. Exactly one of SQLite or MySQL
+// EngineDetails holds engine-specific metadata. Exactly one engine
 // is populated depending on the active database engine.
 type EngineDetails struct {
-	SQLite *SQLiteDetails `json:"sqlite,omitempty"`
-	MySQL  *MySQLDetails  `json:"mysql,omitempty"`
+	SQLite     *SQLiteDetails     `json:"sqlite,omitempty"`
+	MySQL      *MySQLDetails      `json:"mysql,omitempty"`
+	PostgreSQL *PostgreSQLDetails `json:"postgresql,omitempty"`
+}
+
+// PostgreSQLDetails contains PostgreSQL version, database size, and connection pool stats.
+type PostgreSQLDetails struct {
+	EngineVersion     string `json:"engine_version"`
+	DatabaseSizeBytes int64  `json:"database_size_bytes"`
+	ActiveConnections int    `json:"active_connections"`
+	IdleConnections   int    `json:"idle_connections"`
+	MaxConnections    int    `json:"max_connections"`
+	WaitCount         int64  `json:"wait_count"`
 }
 
 // SQLiteDetails contains SQLite-specific engine metadata collected from
@@ -79,7 +90,7 @@ type TableStats struct {
 	RowCount  int64   `json:"row_count"`
 	SizeBytes int64   `json:"size_bytes"`
 	UsagePct  float64 `json:"usage_pct"` // percentage of total DB size
-	Engine    string  `json:"engine"`    // MySQL only; empty for SQLite
+	Engine    string  `json:"engine"`    // MySQL/PostgreSQL; empty for SQLite
 }
 
 // PerformanceStats contains current database performance metrics derived from

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/tphakala/birdnet-go/internal/datastore"
+	v2 "github.com/tphakala/birdnet-go/internal/datastore/v2"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 )
@@ -17,10 +18,33 @@ var _ datastore.DatabaseInspector = (*Datastore)(nil)
 // GetEngineDetails returns engine-specific metadata. For the v2-only SQLite
 // datastore, this collects PRAGMAs, WAL stats, and filesystem info.
 func (ds *Datastore) GetEngineDetails() (datastore.EngineDetails, error) {
+	if v2.DialectName(ds.manager) == v2.DialectPostgres {
+		return ds.getPostgreSQLEngineDetails()
+	}
 	if ds.manager.IsMySQL() {
 		return ds.getMySQLEngineDetails()
 	}
 	return ds.getSQLiteEngineDetails()
+}
+
+// getPostgreSQLEngineDetails collects server metadata and local pool stats.
+func (ds *Datastore) getPostgreSQLEngineDetails() (datastore.EngineDetails, error) {
+	db := ds.manager.DB()
+	details := &datastore.PostgreSQLDetails{}
+	if err := db.Raw("SHOW server_version").Scan(&details.EngineVersion).Error; err != nil {
+		return datastore.EngineDetails{}, fmt.Errorf("postgresql: query version: %w", err)
+	}
+	if err := db.Raw("SELECT pg_database_size(current_database())").Scan(&details.DatabaseSizeBytes).Error; err != nil {
+		return datastore.EngineDetails{}, fmt.Errorf("postgresql: query database size: %w", err)
+	}
+	if sqlDB, err := db.DB(); err == nil {
+		stats := sqlDB.Stats()
+		details.ActiveConnections = stats.InUse
+		details.IdleConnections = stats.Idle
+		details.MaxConnections = stats.MaxOpenConnections
+		details.WaitCount = stats.WaitCount
+	}
+	return datastore.EngineDetails{PostgreSQL: details}, nil
 }
 
 // getSQLiteEngineDetails collects SQLite-specific metadata from PRAGMAs
@@ -134,10 +158,50 @@ func (ds *Datastore) getMySQLEngineDetails() (datastore.EngineDetails, error) {
 
 // GetTableStats returns per-table row counts, sizes, and usage percentages.
 func (ds *Datastore) GetTableStats() ([]datastore.TableStats, error) {
+	if v2.DialectName(ds.manager) == v2.DialectPostgres {
+		return ds.getPostgreSQLTableStats()
+	}
 	if ds.manager.IsMySQL() {
 		return ds.getMySQLTableStats()
 	}
 	return ds.getSQLiteTableStats()
+}
+
+// getPostgreSQLTableStats reports PostgreSQL's approximate live-row counts and
+// exact table plus index sizes for user tables in the current schema.
+func (ds *Datastore) getPostgreSQLTableStats() ([]datastore.TableStats, error) {
+	var rows []struct {
+		Name      string
+		RowCount  int64
+		SizeBytes int64
+	}
+	err := ds.manager.DB().Raw(`
+		SELECT relname AS name, n_live_tup AS row_count,
+		       pg_total_relation_size(relid) AS size_bytes
+		FROM pg_stat_user_tables
+		WHERE schemaname = current_schema()
+		ORDER BY size_bytes DESC
+	`).Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("postgresql: get table stats: %w", err)
+	}
+	var totalSize int64
+	for i := range rows {
+		totalSize += rows[i].SizeBytes
+	}
+	stats := make([]datastore.TableStats, 0, len(rows))
+	for i := range rows {
+		r := &rows[i]
+		var usagePct float64
+		if totalSize > 0 {
+			usagePct = float64(r.SizeBytes) / float64(totalSize) * 100
+		}
+		stats = append(stats, datastore.TableStats{
+			Name: r.Name, RowCount: r.RowCount, SizeBytes: r.SizeBytes,
+			UsagePct: usagePct, Engine: "PostgreSQL",
+		})
+	}
+	return stats, nil
 }
 
 // getSQLiteTableStats tries the dbstat virtual table first, then falls back
@@ -321,7 +385,18 @@ func (ds *Datastore) GetDetectionRate24h() ([]datastore.HourlyCount, error) {
 	var results []datastore.HourlyCount
 	var err error
 
-	if ds.manager.IsMySQL() {
+	switch v2.DialectName(ds.manager) {
+	case v2.DialectPostgres:
+		err = db.Raw(`
+			SELECT to_char(date_trunc('hour', to_timestamp(detected_at) AT TIME ZONE 'UTC'),
+			               'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS hour,
+			       COUNT(*) AS count
+			FROM `+quoteIdentifier(table)+`
+			WHERE detected_at > EXTRACT(EPOCH FROM now()) - ?
+			GROUP BY hour
+			ORDER BY hour
+		`, secondsPerDay).Scan(&results).Error
+	case datastore.DialectMySQL:
 		// The label is computed from the integer with DATE_ADD on a literal
 		// date, which applies no time zone. FROM_UNIXTIME would convert to the
 		// session time zone and shift the buckets by the server's UTC offset.
@@ -336,7 +411,7 @@ func (ds *Datastore) GetDetectionRate24h() ([]datastore.HourlyCount, error) {
 			GROUP BY hour
 			ORDER BY hour
 		`, secondsPerDay).Scan(&results).Error
-	} else {
+	default:
 		err = db.Raw(`
 			SELECT strftime('%Y-%m-%dT%H:00:00Z', detected_at, 'unixepoch') AS hour,
 			       COUNT(*) AS count
@@ -370,7 +445,17 @@ func (ds *Datastore) GetDetectionRateDaily(days int) ([]datastore.DailyCount, er
 	var results []datastore.DailyCount
 	var err error
 
-	if ds.manager.IsMySQL() {
+	switch v2.DialectName(ds.manager) {
+	case v2.DialectPostgres:
+		err = db.Raw(`
+			SELECT to_char(to_timestamp(detected_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+			       COUNT(*) AS count
+			FROM `+quoteIdentifier(table)+`
+			WHERE detected_at > EXTRACT(EPOCH FROM now()) - (?::bigint * ?::bigint)
+			GROUP BY date
+			ORDER BY date
+		`, days, secondsPerDay).Scan(&results).Error
+	case datastore.DialectMySQL:
 		// Zone-free label and window, as in GetDetectionRate24h.
 		err = db.Raw(`
 			SELECT DATE_FORMAT(DATE_ADD('1970-01-01', INTERVAL detected_at SECOND), '%Y-%m-%d') AS date,
@@ -380,7 +465,7 @@ func (ds *Datastore) GetDetectionRateDaily(days int) ([]datastore.DailyCount, er
 			GROUP BY date
 			ORDER BY date
 		`, days, secondsPerDay).Scan(&results).Error
-	} else {
+	default:
 		err = db.Raw(`
 			SELECT strftime('%Y-%m-%d', detected_at, 'unixepoch') AS date,
 			       COUNT(*) AS count

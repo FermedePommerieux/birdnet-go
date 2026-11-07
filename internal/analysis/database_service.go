@@ -269,7 +269,9 @@ type startupReading struct {
 func (d *DatabaseService) readStartupState(settings *conf.Settings, log logger.Logger) startupReading {
 	var r startupReading
 	// Check for unmigrated legacy records from a potential hard crash during tail sync.
-	r.hasUnmigrated, r.tailErr = d.checkLegacyTail(settings, log)
+	if !settings.Output.PostgreSQL.Enabled {
+		r.hasUnmigrated, r.tailErr = d.checkLegacyTail(settings, log)
+	}
 
 	// Check for and perform database consolidation if needed (SQLite only)
 	// Skip consolidation when unmigrated records found, or when the tail could not be
@@ -435,6 +437,19 @@ func (d *DatabaseService) Start(ctx context.Context) error {
 	// constructed, so no mode or table prefix is ever chosen on a failed read.
 	datastoreLog := logger.Global().Module("datastore")
 	reading, err := d.awaitStartupState(ctx, settings, datastoreLog)
+	// PostgreSQL only supports the native v2 schema. A failed probe must never
+	// open another configured path or construct the legacy store.
+	if settings.Output.PostgreSQL.Enabled {
+		if err != nil {
+			return err
+		}
+		if reading.state.Error != nil {
+			return reading.state.Error
+		}
+		if !reading.state.FreshInstall && (!reading.state.V2Available || reading.state.MigrationStatus != entities.MigrationStatusCompleted) {
+			return fmt.Errorf("PostgreSQL requires an empty database or a completed v2 schema")
+		}
+	}
 	if abortErr := abortOnStartupStateUnknown(datastoreLog, err); abortErr != nil {
 		return abortErr
 	}
@@ -486,8 +501,12 @@ func (d *DatabaseService) Start(ctx context.Context) error {
 			logger.String("migration_status", string(startupState.MigrationStatus)),
 			logger.String("operation", "startup_mode_check"))
 	case freshInstall:
+		freshPath := settings.Output.SQLite.Path
+		if settings.Output.PostgreSQL.Enabled {
+			freshPath = ""
+		}
 		GetLogger().Info("fresh installation detected, initializing v2 schema",
-			logger.String("database_path", settings.Output.SQLite.Path),
+			logger.String("database_path", freshPath),
 			logger.String("operation", "startup_mode_check"))
 	case rejection != nil:
 		// Refused below, after the boot journal.
@@ -544,6 +563,9 @@ func (d *DatabaseService) Start(ctx context.Context) error {
 		var err error
 		v2OnlyDatastore, err = initializeV2OnlyMode(settings, reading.mysqlFreshV2)
 		if err != nil {
+			if settings.Output.PostgreSQL.Enabled {
+				return err
+			}
 			if corrErr := abortOnV2SchemaCorruption(datastoreLog, err,
 				"initialize_enhanced_database_mode", "v2-only"); corrErr != nil {
 				return corrErr
@@ -572,6 +594,9 @@ func (d *DatabaseService) Start(ctx context.Context) error {
 		var err error
 		v2OnlyDatastore, err = v2only.InitializeFreshInstall(settings, GetLogger(), freshSciIndex)
 		if err != nil {
+			if settings.Output.PostgreSQL.Enabled {
+				return err
+			}
 			if corrErr := abortOnV2SchemaCorruption(GetLogger(), err,
 				"initialize_fresh_install", "fresh-install"); corrErr != nil {
 				return corrErr
@@ -595,7 +620,7 @@ func (d *DatabaseService) Start(ctx context.Context) error {
 			// no file path; journal an empty path rather than the unused
 			// sqlite setting.
 			freshDBPath := ""
-			if !settings.Output.MySQL.Enabled {
+			if settings.Output.SQLite.Enabled {
 				freshDBPath = settings.Output.SQLite.Path
 			}
 			diagnostics.RecordFreshDB(diagnostics.Default(),
@@ -751,6 +776,10 @@ func bootParamsFromStartup(settings *conf.Settings, st datastoreV2.StartupState)
 		p.ConfigDir = dir
 	}
 
+	if settings.Output.PostgreSQL.Enabled {
+		p.Dialect = datastoreV2.DialectPostgres
+		return p
+	}
 	if settings.Output.MySQL.Enabled {
 		p.Dialect = datastore.DialectMySQL
 		return p
@@ -1017,16 +1046,20 @@ func (d *DatabaseService) closeV2Database(log logger.Logger) {
 	}
 
 	// Determine database type for logging.
+	dialect := datastoreV2.DialectName(manager)
 	dbType := "SQLite"
-	if manager.IsMySQL() {
+	switch dialect {
+	case datastore.DialectMySQL:
 		dbType = "MySQL"
+	case datastoreV2.DialectPostgres:
+		dbType = "PostgreSQL"
 	}
 
 	// Stash path before close (may not be available after).
 	dbPath := manager.Path()
 
 	// Perform WAL checkpoint before closing (SQLite only, no-op for MySQL).
-	if !manager.IsMySQL() {
+	if dialect == datastore.DialectSQLite {
 		log.Info("performing v2 SQLite WAL checkpoint",
 			logger.String("operation", "v2_wal_checkpoint_before_shutdown"))
 

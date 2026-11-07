@@ -2425,7 +2425,7 @@ func (p *Processor) getDefaultActions(det *Detections, settings *conf.Settings) 
 	}
 
 	// Create DatabaseAction if database is enabled
-	if settings.Output.SQLite.Enabled || settings.Output.MySQL.Enabled {
+	if settings.Output.SQLite.Enabled || settings.Output.MySQL.Enabled || settings.Output.PostgreSQL.Enabled {
 		p.speciesTrackerMu.RLock()
 		tracker := p.NewSpeciesTracker
 		p.speciesTrackerMu.RUnlock()

@@ -26,6 +26,7 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 	"github.com/tphakala/birdnet-go/internal/api/v2/apicore"
 	"github.com/tphakala/birdnet-go/internal/datastore"
+	datastoreV2 "github.com/tphakala/birdnet-go/internal/datastore/v2"
 	"github.com/tphakala/birdnet-go/internal/errors"
 	"github.com/tphakala/birdnet-go/internal/logger"
 	"github.com/tphakala/birdnet-go/internal/observability"
@@ -1192,13 +1193,9 @@ func (c *Handler) getV2ManagerStats(ctx context.Context) (*datastore.DatabaseSta
 	}
 
 	stats := &datastore.DatabaseStats{
-		Type:      datastore.DialectSQLite,
+		Type:      datastoreV2.DialectName(mgr),
 		Location:  mgr.Path(),
 		Connected: true,
-	}
-
-	if mgr.IsMySQL() {
-		stats.Type = datastore.DialectMySQL
 	}
 
 	db := mgr.DB()
@@ -1207,11 +1204,16 @@ func (c *Handler) getV2ManagerStats(ctx context.Context) (*datastore.DatabaseSta
 		return stats, true
 	}
 
-	if !mgr.IsMySQL() {
+	switch stats.Type {
+	case datastoreV2.DialectPostgres:
+		if err := db.WithContext(ctx).Raw("SELECT pg_database_size(current_database())").Scan(&stats.SizeBytes).Error; err != nil {
+			c.LogWarnIfEnabled("Failed to get PostgreSQL database size", logger.Error(err))
+		}
+	case datastore.DialectSQLite:
 		if err := db.WithContext(ctx).Raw("SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size()").Scan(&stats.SizeBytes).Error; err != nil {
 			c.LogWarnIfEnabled("Failed to get v2 SQLite database size", logger.Error(err))
 		}
-	} else {
+	case datastore.DialectMySQL:
 		prefix := mgr.TablePrefix()
 		if prefix != "" {
 			// Escape underscore for MySQL LIKE (underscore is single-char wildcard)
@@ -1296,7 +1298,7 @@ func (c *Handler) DownloadDatabaseBackup(ctx echo.Context) error {
 		settings := c.CurrentSettings()
 		if settings == nil || settings.Output.SQLite.Path == "" {
 			return c.HandleError(ctx, fmt.Errorf("not sqlite"),
-				"Backup download only available for SQLite databases. Use MySQL tools for MySQL backup.",
+				"Backup download only available for SQLite databases. Use the database server’s backup tools.",
 				http.StatusBadRequest)
 		}
 		dbPath = settings.Output.SQLite.Path
@@ -1320,9 +1322,9 @@ func (c *Handler) DownloadDatabaseBackup(ctx echo.Context) error {
 			return c.HandleError(ctx, fmt.Errorf("v2 not available"),
 				"V2 database not initialized", http.StatusNotFound)
 		}
-		if mgr.IsMySQL() {
+		if datastoreV2.DialectName(mgr) != datastore.DialectSQLite {
 			return c.HandleError(ctx, fmt.Errorf("not sqlite"),
-				"Backup download only available for SQLite databases. Use MySQL tools for MySQL backup.",
+				"Backup download only available for SQLite databases. Use the database server’s backup tools.",
 				http.StatusBadRequest)
 		}
 		dbPath = mgr.Path()

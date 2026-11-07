@@ -50,7 +50,7 @@ func storagePaths(s *conf.Settings, configFile, configDir string) []diagnostics.
 	}
 
 	// A blank SQLite path opens the datastore's default database, so it is judged.
-	if db := datastore.ResolveSQLitePath(s.Output.SQLite.Path); !s.Output.MySQL.Enabled && !isInMemorySQLite(db) {
+	if db := datastore.ResolveSQLitePath(s.Output.SQLite.Path); !s.Output.MySQL.Enabled && !s.Output.PostgreSQL.Enabled && !isInMemorySQLite(db) {
 		paths = append(paths, diagnostics.StoragePath{Label: diagnostics.StorageLabelDatabase, Path: db, IsFile: true})
 	}
 

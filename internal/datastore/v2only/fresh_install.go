@@ -63,6 +63,9 @@ func InitializeFreshInstall(settings *conf.Settings, log logger.Logger, speciesC
 			Logger:     log,
 		})
 
+	case settings.Output.PostgreSQL.Enabled:
+		manager, err = v2.NewPostgresManager(&settings.Output.PostgreSQL)
+
 	case settings.Output.MySQL.Enabled:
 		// Fresh install: use clean table names, NO v2_ prefix
 		manager, err = v2.NewMySQLManager(&v2.MySQLConfig{
@@ -104,15 +107,17 @@ func InitializeFreshInstall(settings *conf.Settings, log logger.Logger, speciesC
 			Build()
 	}
 
-	// Set migration state to COMPLETED (no migration needed for fresh install)
-	if err := initializeMigrationStateAsCompleted(manager); err != nil {
-		_ = manager.Close()
-		return nil, errors.New(err).
-			Component("datastore").
-			Category(errors.CategoryDatabase).
-			Context("operation", "fresh_install").
-			Context("step", "set_migration_state").
-			Build()
+	// PostgreSQL commits the completion marker atomically with its schema.
+	if v2.DialectName(manager) != v2.DialectPostgres {
+		if err := v2.MarkFreshInstallCompleted(manager.DB()); err != nil {
+			_ = manager.Close()
+			return nil, errors.New(err).
+				Component("datastore").
+				Category(errors.CategoryDatabase).
+				Context("operation", "fresh_install").
+				Context("step", "set_migration_state").
+				Build()
+		}
 	}
 
 	// Create repositories (no v2 prefix for fresh installs)
@@ -207,28 +212,4 @@ func InitializeFreshInstall(settings *conf.Settings, log logger.Logger, speciesC
 		logger.String("database_path", manager.Path()))
 
 	return ds, nil
-}
-
-// initializeMigrationStateAsCompleted sets the migration state to COMPLETED.
-// For fresh installs, migration is effectively "complete" since there's nothing to migrate,
-// and the auxiliary data outcome is recorded as not required.
-func initializeMigrationStateAsCompleted(manager v2.Manager) error {
-	db := manager.DB()
-
-	now := time.Now()
-	state := entities.MigrationState{
-		ID:          1,
-		State:       entities.MigrationStatusCompleted,
-		StartedAt:   &now,
-		CompletedAt: &now,
-		// Nothing to migrate: record that, with the attempt marker equal to StartedAt.
-		AuxiliaryDataStatus:    entities.AuxiliaryDataStatusNotRequired,
-		AuxiliaryDataStartedAt: &now,
-		TotalRecords:           0,
-		MigratedRecords:        0,
-		LastMigratedID:         0,
-		ErrorMessage:           "",
-	}
-
-	return db.Save(&state).Error
 }

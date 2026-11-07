@@ -20,6 +20,7 @@ import (
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/tphakala/birdnet-go/internal/api/v2/apicore"
 	"github.com/tphakala/birdnet-go/internal/datastore"
+	datastoreV2 "github.com/tphakala/birdnet-go/internal/datastore/v2"
 	"github.com/tphakala/birdnet-go/internal/errors"
 	"github.com/tphakala/birdnet-go/internal/logger"
 	"github.com/tphakala/birdnet-go/internal/notification"
@@ -366,10 +367,10 @@ func (c *Handler) RegisterBackupRoutes(g *echo.Group) {
 		// plus os.TempDir() for files created by older versions.
 		var dbDirs []string
 		settings := c.CurrentSettings()
-		if settings != nil && settings.Output.SQLite.Path != "" {
+		if settings != nil && !settings.Output.PostgreSQL.Enabled && settings.Output.SQLite.Path != "" {
 			dbDirs = append(dbDirs, filepath.Dir(settings.Output.SQLite.Path))
 		}
-		if c.V2Manager != nil && !c.V2Manager.IsMySQL() {
+		if c.V2Manager != nil && datastoreV2.DialectName(c.V2Manager) == datastore.DialectSQLite {
 			dbDirs = append(dbDirs, filepath.Dir(c.V2Manager.Path()))
 		}
 		backupJobManager.CleanupOrphanedTempFiles(dbDirs...)
@@ -658,7 +659,7 @@ func (c *Handler) getBackupDBInfo(dbType string) (string, *gorm.DB, error) {
 	if c.V2Manager == nil {
 		return "", nil, fmt.Errorf("v2 database not initialized")
 	}
-	if c.V2Manager.IsMySQL() {
+	if datastoreV2.DialectName(c.V2Manager) != datastore.DialectSQLite {
 		return "", nil, fmt.Errorf("backup only available for SQLite databases")
 	}
 	return c.V2Manager.Path(), c.V2Manager.DB(), nil

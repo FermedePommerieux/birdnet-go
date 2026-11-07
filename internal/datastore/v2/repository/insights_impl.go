@@ -109,8 +109,8 @@ func (r *insightsRepository) GetExpectedSpeciesToday(ctx context.Context, yearRa
 	spanStart, spanEnd := yearRangesSpan(yearRanges)
 	now := time.Now()
 	from, to := wallclock.Span(spanStart, spanEnd, now)
-	dateExpr := WallClockDateExpr("d.detected_at", loc, from, to, r.isMySQL)
-	yearExpr := wallClockYearSQL("d.detected_at", perRowOffsetSQL("d.detected_at", loc, spanStart, spanEnd, now), r.isMySQL)
+	dateExpr := WallClockDateExprForDB("d.detected_at", loc, from, to, r.db.Name())
+	yearExpr := wallClockYearSQLForDB("d.detected_at", perRowOffsetSQL("d.detected_at", loc, spanStart, spanEnd, now), r.db.Name())
 
 	query := r.db.WithContext(ctx).
 		Table(fmt.Sprintf("%s d", det)).
@@ -216,8 +216,8 @@ func (r *insightsRepository) dawnChorusSegmentRows(ctx context.Context, seg wall
 	lab := r.labelsTable()
 	fpJoin, fpWhere := r.falsePositiveExclusion("d")
 	offset := segmentOffsetSQL(seg)
-	hourExpr := wallClockHourSQL("d.detected_at", offset, r.isMySQL)
-	dateExpr := wallClockDateSQL("d.detected_at", offset, r.isMySQL)
+	hourExpr := wallClockHourSQLForDB("d.detected_at", offset, r.db.Name())
+	dateExpr := wallClockDateSQLForDB("d.detected_at", offset, r.db.Name())
 
 	query := r.db.WithContext(ctx).
 		Table(fmt.Sprintf("%s d", det)).
@@ -312,7 +312,7 @@ func (r *insightsRepository) GetDashboardKPIs(ctx context.Context, todaySince in
 	oneYearAgo, _ := wallclock.DayBounds(dateOneYearBefore(wallclock.DateOf(time.Unix(todaySince, 0).In(loc))), loc)
 	now := time.Now()
 	from, to := wallclock.Span(oneYearAgo.Unix(), now.Unix(), now)
-	dateExpr := WallClockDateExpr("d.detected_at", loc, from, to, r.isMySQL)
+	dateExpr := WallClockDateExprForDB("d.detected_at", loc, from, to, r.db.Name())
 
 	kpis := &DashboardKPIs{}
 

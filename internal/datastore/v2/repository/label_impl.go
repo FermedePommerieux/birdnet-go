@@ -224,7 +224,7 @@ func (r *labelRepository) BatchGetOrCreate(ctx context.Context, scientificNames 
 
 	if err := datastore.RetryOnLock(ctx, "v2_batch_create_labels", func() error {
 		return r.db.WithContext(ctx).Table(r.tableName()).
-			Clauses(onConflictSkip(r.isMySQL, scientificNameColumn)).
+			Clauses(onConflictSkip(r.db.Name(), scientificNameColumn)).
 			CreateInBatches(newLabels, batchQuerySize).Error
 	}, r.metrics); err != nil {
 		return nil, fmt.Errorf("batch create labels: %w", err)

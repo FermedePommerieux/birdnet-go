@@ -186,10 +186,76 @@ type StartupState struct {
 //   - StartupState with Decision=DecisionStateUnknown and Error wrapping ErrStartupStateUnknown
 //     if the MySQL/MariaDB server could not be reached; no mode may be chosen on it
 func CheckMigrationStateBeforeStartup(settings *conf.Settings) StartupState {
+	if settings.Output.PostgreSQL.Enabled {
+		return checkPostgresMigrationState(settings)
+	}
 	if settings.Output.MySQL.Enabled {
 		return checkMySQLMigrationState(settings)
 	}
 	return checkSQLiteMigrationState(settings)
+}
+
+// checkPostgresMigrationState accepts only an empty schema or a complete v2
+// installation with a completed marker. It never falls back to the legacy store.
+func checkPostgresMigrationState(settings *conf.Settings) StartupState {
+	m, err := NewPostgresManager(&settings.Output.PostgreSQL)
+	if err != nil {
+		return unknownStartupState(fmt.Errorf("%w: open PostgreSQL database: %w", ErrStartupStateUnknown, err))
+	}
+	defer func() { _ = m.Close() }()
+	return inspectPostgresSchema(m.DB())
+}
+
+// inspectPostgresSchema is shared by startup and the in-transaction bootstrap
+// check, so both make the same decision about an existing schema.
+func inspectPostgresSchema(db *gorm.DB) StartupState {
+	var tableNames []string
+	if err := db.Raw("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = current_schema()").Scan(&tableNames).Error; err != nil {
+		return unknownStartupState(fmt.Errorf("%w: list PostgreSQL tables", ErrStartupStateUnknown))
+	}
+	if len(tableNames) == 0 {
+		return StartupState{
+			MigrationStatus: entities.MigrationStatusIdle,
+			FreshInstall:    true,
+			Decision:        DecisionFreshInstall,
+		}
+	}
+
+	expected := make(map[string]bool, len(v2Entities()))
+	for _, entity := range v2Entities() {
+		stmt := &gorm.Statement{DB: db}
+		if err := stmt.Parse(entity); err != nil {
+			return unknownStartupState(fmt.Errorf("%w: parse PostgreSQL v2 schema", ErrStartupStateUnknown))
+		}
+		expected[stmt.Schema.Table] = true
+	}
+	present := make(map[string]bool, len(tableNames))
+	for _, table := range tableNames {
+		if !expected[table] {
+			return postgresCorruptedStartupState("unrelated table in PostgreSQL schema")
+		}
+		present[table] = true
+	}
+	for _, required := range []string{mixedSchemaDetectionsTable, "labels", "ai_models", "migration_states"} {
+		if !present[required] {
+			return postgresCorruptedStartupState("incomplete PostgreSQL v2 schema")
+		}
+	}
+	var state entities.MigrationState
+	if err := db.Table("migration_states").Where("id = ?", 1).Take(&state).Error; err != nil {
+		return postgresCorruptedStartupState("could not read PostgreSQL v2 completion marker")
+	}
+	if state.State != entities.MigrationStatusCompleted {
+		return postgresCorruptedStartupState("PostgreSQL v2 migration is not completed")
+	}
+	return completedV2StartupState(DecisionV2Restart)
+}
+
+func postgresCorruptedStartupState(reason string) StartupState {
+	return StartupState{
+		Decision: DecisionV2Corrupted,
+		Error:    fmt.Errorf("%w: %s", ErrV2DatabaseCorrupted, reason),
+	}
 }
 
 // checkSQLiteMigrationState checks migration state for SQLite deployments.

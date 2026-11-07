@@ -207,6 +207,9 @@ func (c *Handler) finishPrerequisites(checks []PrerequisiteCheck) PrerequisitesR
 // prerequisiteSteps lists every step of a full run: the critical steps, then
 // the warning checks. sink receives the legacy record count.
 func (c *Handler) prerequisiteSteps(sink *recordCountSink) []prereqStep {
+	if c.V2Manager != nil && datastoreV2.DialectName(c.V2Manager) == datastoreV2.DialectPostgres {
+		return []prereqStep{singleCheckStep(checkIDStateIdle, checkNameStateIdle, false, func(context.Context) PrerequisiteCheck { return c.checkStateIdle() })}
+	}
 	steps := c.criticalPrerequisiteSteps(sink)
 	steps = append(steps,
 		singleCheckStep(checkIDExistingV2Data, checkNameExistingV2Data, false, c.checkExistingV2Data),

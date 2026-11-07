@@ -9,6 +9,7 @@ import (
 
 	"github.com/tphakala/birdnet-go/internal/datastore"
 	"github.com/tphakala/birdnet-go/internal/datastore/dbserver"
+	v2 "github.com/tphakala/birdnet-go/internal/datastore/v2"
 	"github.com/tphakala/birdnet-go/internal/datastore/v2/entities"
 	"github.com/tphakala/birdnet-go/internal/logger"
 	"github.com/tphakala/birdnet-go/internal/privacy"
@@ -74,6 +75,22 @@ func (c *GormDatabaseInfoCollector) CollectDatabaseInfo(ctx context.Context) (*D
 	switch c.dialect {
 	case datastore.DialectSQLite:
 		c.collectSQLiteInfo(ctx, info, &collectionErrors, log)
+	case v2.DialectPostgres:
+		db := c.db.WithContext(ctx)
+		info.IntegrityCheck = "not_available"
+		if err := db.Raw("SELECT current_setting('server_version'), pg_database_size(current_database())").Row().Scan(&info.EngineVersion, &info.DatabaseSizeBytes); err != nil {
+			collectionErrors = append(collectionErrors, "could not read PostgreSQL version and database size")
+		}
+		var tables []struct {
+			Name     string
+			RowCount int64
+		}
+		if err := db.Raw("SELECT relname AS name, n_live_tup AS row_count FROM pg_stat_user_tables WHERE schemaname = current_schema() ORDER BY relname").Scan(&tables).Error; err != nil {
+			collectionErrors = append(collectionErrors, "could not read PostgreSQL table statistics")
+		}
+		for _, table := range tables {
+			info.Tables = append(info.Tables, TableSchema{Name: table.Name, RowCount: table.RowCount})
+		}
 	case datastore.DialectMySQL:
 		c.collectMySQLInfo(ctx, info, &collectionErrors, log)
 	default:

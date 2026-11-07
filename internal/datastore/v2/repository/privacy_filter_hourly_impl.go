@@ -68,8 +68,9 @@ func (r *privacyFilterHourlyRepository) AddDelta(ctx context.Context, row *entit
 	if row == nil || row.SourceID == 0 {
 		return ErrPrivacyRollupNoSource
 	}
+	dialect := r.db.Name()
 	maxFunc := maxFuncSQLite
-	if r.isMySQL {
+	if dialect == "mysql" || dialect == "postgres" {
 		maxFunc = maxFuncMySQL
 	}
 	sums := []struct {
@@ -82,15 +83,22 @@ func (r *privacyFilterHourlyRepository) AddDelta(ctx context.Context, row *entit
 		{"margin_lt_200", row.MarginLt200}, {"margin_ge_200", row.MarginGe200},
 	}
 	assignments := make(clause.Set, 0, len(sums)+1)
+	currentColumn := func(name string) clause.Column {
+		column := clause.Column{Name: name}
+		if dialect == "postgres" {
+			column.Table = r.tableName()
+		}
+		return column
+	}
 	for _, s := range sums {
 		assignments = append(assignments, clause.Assignment{
 			Column: clause.Column{Name: s.column},
-			Value:  gorm.Expr("? + ?", clause.Column{Name: s.column}, s.delta),
+			Value:  gorm.Expr("? + ?", currentColumn(s.column), s.delta),
 		})
 	}
 	assignments = append(assignments, clause.Assignment{
 		Column: clause.Column{Name: privacyHourlyMaxScoreColumn},
-		Value:  gorm.Expr(maxFunc+"(?, ?)", clause.Column{Name: privacyHourlyMaxScoreColumn}, row.MaxScore),
+		Value:  gorm.Expr(maxFunc+"(?, ?)", currentColumn(privacyHourlyMaxScoreColumn), row.MaxScore),
 	})
 
 	return datastore.RetryOnLock(ctx, "v2_add_privacy_filter_hourly", func() error {

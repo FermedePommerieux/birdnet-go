@@ -129,7 +129,9 @@
   let selectedDatabaseType = $state('sqlite');
 
   $effect(() => {
-    if (settings.output.mysql.enabled) {
+    if ($outputSettings?.postgresql?.enabled) {
+      selectedDatabaseType = 'postgres';
+    } else if (settings.output.mysql.enabled) {
       selectedDatabaseType = 'mysql';
     } else if (settings.output.sqlite.enabled) {
       selectedDatabaseType = 'sqlite';
@@ -177,7 +179,7 @@
 
   // Database stats interface and state
   interface DatabaseStats {
-    type: DatabaseType;
+    type: DatabaseType | 'postgres';
     size_bytes: number;
     total_detections: number;
     connected: boolean;
@@ -857,34 +859,42 @@
       <div class="space-y-6">
         <!-- Database Type Selector -->
         <div class="max-w-md">
-          <SelectDropdown
-            options={databaseOptions}
-            value={selectedDatabaseType}
-            label={t('settings.main.sections.database.type.label')}
-            helpText={t('settings.main.sections.database.type.helpText')}
-            disabled={store.isLoading || store.isSaving}
-            variant="select"
-            groupBy={false}
-            onChange={value => {
-              selectedDatabaseType = value as string;
-              updateDatabaseType(value as 'sqlite' | 'mysql');
-            }}
-          >
-            {#snippet renderOption(option)}
-              {@const dbOption = option as DatabaseOption}
-              <div class="flex items-center gap-2">
-                <DatabaseIcon database={dbOption.databaseType} className="size-4" />
-                <span>{dbOption.label}</span>
-              </div>
-            {/snippet}
-            {#snippet renderSelected(options)}
-              {@const dbOption = options[0] as DatabaseOption}
-              <span class="flex items-center gap-2">
-                <DatabaseIcon database={dbOption.databaseType} className="size-4" />
-                <span>{dbOption.label}</span>
-              </span>
-            {/snippet}
-          </SelectDropdown>
+          {#if selectedDatabaseType === 'postgres'}
+            <dl>
+              <dt class="text-sm text-muted">{t('settings.main.sections.database.stats.type')}</dt>
+              <dd class="font-medium">PostgreSQL</dd>
+              <dd class="text-xs text-muted"><code>config.yaml · output.postgresql</code></dd>
+            </dl>
+          {:else}
+            <SelectDropdown
+              options={databaseOptions}
+              value={selectedDatabaseType}
+              label={t('settings.main.sections.database.type.label')}
+              helpText={t('settings.main.sections.database.type.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              variant="select"
+              groupBy={false}
+              onChange={value => {
+                selectedDatabaseType = value as string;
+                updateDatabaseType(value as 'sqlite' | 'mysql');
+              }}
+            >
+              {#snippet renderOption(option)}
+                {@const dbOption = option as DatabaseOption}
+                <div class="flex items-center gap-2">
+                  <DatabaseIcon database={dbOption.databaseType} className="size-4" />
+                  <span>{dbOption.label}</span>
+                </div>
+              {/snippet}
+              {#snippet renderSelected(options)}
+                {@const dbOption = options[0] as DatabaseOption}
+                <span class="flex items-center gap-2">
+                  <DatabaseIcon database={dbOption.databaseType} className="size-4" />
+                  <span>{dbOption.label}</span>
+                </span>
+              {/snippet}
+            </SelectDropdown>
+          {/if}
         </div>
 
         <!-- SQLite Settings -->
@@ -1003,8 +1013,16 @@
                 {t('settings.main.sections.database.stats.type')}
               </div>
               <div class="text-lg font-semibold flex items-center gap-2 mt-1">
-                <DatabaseIcon database={databaseStats.data.type} className="size-5" />
-                <span class="capitalize">{databaseStats.data.type}</span>
+                {#if databaseStats.data.type === 'postgres'}
+                  <Database class="size-5" />
+                {:else}
+                  <DatabaseIcon database={databaseStats.data.type} className="size-5" />
+                {/if}
+                <span class="capitalize"
+                  >{databaseStats.data.type === 'postgres'
+                    ? 'PostgreSQL'
+                    : databaseStats.data.type}</span
+                >
               </div>
             </div>
 

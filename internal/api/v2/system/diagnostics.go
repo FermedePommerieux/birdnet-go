@@ -21,6 +21,7 @@ import (
 	"github.com/tphakala/birdnet-go/internal/conf"
 	"github.com/tphakala/birdnet-go/internal/datastore"
 	"github.com/tphakala/birdnet-go/internal/datastore/dbserver"
+	datastoreV2 "github.com/tphakala/birdnet-go/internal/datastore/v2"
 	"github.com/tphakala/birdnet-go/internal/errors"
 	"github.com/tphakala/birdnet-go/internal/health"
 	"github.com/tphakala/birdnet-go/internal/health/checks"
@@ -101,6 +102,8 @@ func (c *Handler) HealthEventBuffer() *observability.HealthEventBuffer {
 // settings select MySQL or MariaDB but there is no v2 manager to query.
 var errDatabaseSizeNoMySQLHandle = errors.NewStd("no MySQL connection is available")
 
+var errDatabaseSizeNoPostgresHandle = errors.NewStd("no PostgreSQL connection is available")
+
 // mysqlServerDB returns the v2 manager's handle when the database is MySQL or
 // MariaDB, and nil otherwise (SQLite, or no v2 manager). It is read on every
 // check run, so nothing is captured at startup. The v2 manager is used because
@@ -112,6 +115,34 @@ func (c *Handler) mysqlServerDB() *gorm.DB {
 		return nil
 	}
 	return mgr.DB()
+}
+
+// serverDatabaseSize uses the live server handle and tells the health check
+// whether a local SQLite file is applicable.
+func (c *Handler) serverDatabaseSize(ctx context.Context) (size int64, server bool, err error) {
+	if mgr := c.V2Manager; mgr != nil && datastoreV2.DialectName(mgr) == datastoreV2.DialectPostgres {
+		db := mgr.DB()
+		if db == nil {
+			return 0, true, errDatabaseSizeNoPostgresHandle
+		}
+		var size int64
+		err := db.WithContext(ctx).Raw("SELECT pg_database_size(current_database())").Scan(&size).Error
+		return size, true, err
+	}
+	if c.V2Manager == nil && c.CurrentSettings().Output.PostgreSQL.Enabled {
+		return 0, true, errDatabaseSizeNoPostgresHandle
+	}
+	db := c.mysqlServerDB()
+	if db == nil {
+		// Without a v2 manager the dialect is unknown; settings say MySQL,
+		// so do not fall back to a SQLite file that may be a leftover.
+		if c.V2Manager == nil && c.CurrentSettings().Output.MySQL.Enabled {
+			return 0, true, errDatabaseSizeNoMySQLHandle
+		}
+		return 0, false, nil
+	}
+	size, err = dbserver.QuerySchemaSize(ctx, db)
+	return size, true, err
 }
 
 // registerHealthChecks registers all health checks with dependency injection closures.
@@ -212,25 +243,15 @@ func (c *Handler) registerHealthChecks() {
 		// Database checks
 		checks.NewDatabaseSizeCheck(func() string {
 			return c.CurrentSettings().Output.SQLite.Path
-		}, func(ctx context.Context) (int64, bool, error) {
-			db := c.mysqlServerDB()
-			if db == nil {
-				// Without a v2 manager the dialect is unknown; settings say MySQL,
-				// so do not fall back to a SQLite file that may be a leftover.
-				if c.V2Manager == nil && c.CurrentSettings().Output.MySQL.Enabled {
-					return 0, true, errDatabaseSizeNoMySQLHandle
-				}
-				return 0, false, nil
-			}
-			size, err := dbserver.QuerySchemaSize(ctx, db)
-			return size, true, err
-		}),
+		}, c.serverDatabaseSize),
 		checks.NewMigrationStatusCheck(func() (bool, string, error) {
 			if c.DS == nil {
 				return false, "", errors.NewStd("datastore unavailable")
 			}
 			dbType := "sqlite"
-			if c.CurrentSettings().Output.MySQL.Enabled {
+			if c.V2Manager != nil {
+				dbType = datastoreV2.DialectName(c.V2Manager)
+			} else if c.CurrentSettings().Output.MySQL.Enabled {
 				dbType = "mysql"
 			}
 			return true, dbType + " (auto-migrated at startup)", nil

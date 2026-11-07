@@ -18,15 +18,15 @@ const (
 // The stored row and the first row of the statement are kept; nothing is
 // overwritten, and errors other than a duplicate key are still returned.
 //
-// On SQLite it is ON CONFLICT DO NOTHING, with target as the conflict target
+// On SQLite and PostgreSQL it is ON CONFLICT DO NOTHING, with target as the conflict target
 // when given. On MySQL and MariaDB GORM renders DoNothing as
 // "ON DUPLICATE KEY UPDATE id=id", which MySQL 8.4 rejects with Error 1869
 // when two rows of one INSERT share a unique key, losing the whole statement.
 // There the skip is written as an assignment of noopColumn to itself instead.
 // noopColumn must be a plain column of the table, never the auto-increment
 // column or a generated column. The MySQL driver ignores target.
-func onConflictSkip(isMySQL bool, noopColumn string, target ...clause.Column) clause.OnConflict {
-	if !isMySQL {
+func onConflictSkip(dialect, noopColumn string, target ...clause.Column) clause.OnConflict {
+	if dialect != "mysql" {
 		return clause.OnConflict{Columns: target, DoNothing: true}
 	}
 	c := clause.Column{Name: noopColumn}

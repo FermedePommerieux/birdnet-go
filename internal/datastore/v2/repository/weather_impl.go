@@ -143,7 +143,7 @@ func (r *weatherRepository) SaveAllDailyEvents(ctx context.Context, events []ent
 
 		err := datastore.RetryOnLock(ctx, "v2_save_all_daily_events", func() error {
 			return r.db.WithContext(ctx).Table(r.dailyEventsTable()).
-				Clauses(onConflictSkip(r.isMySQL, dailyEventsDateColumn, clause.Column{Name: dailyEventsDateColumn})).
+				Clauses(onConflictSkip(r.db.Name(), dailyEventsDateColumn, clause.Column{Name: dailyEventsDateColumn})).
 				Create(&batch).Error
 		}, r.metrics)
 		if err != nil {

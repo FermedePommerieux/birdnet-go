@@ -635,6 +635,10 @@ func (r *detectionRepository) buildSearchJoins(query *gorm.DB, filters *SearchFi
 	// so the common-name branch alone needs no join.
 	hasQuery := filters.Query != ""
 	hasCommon := len(filters.CommonLabelIDs) > 0
+	likeOperator := "LIKE"
+	if r.db.Name() == "postgres" {
+		likeOperator = "ILIKE"
+	}
 	switch {
 	case hasQuery && hasCommon:
 		// Both predicates reference the joined labels table (labels.id = detections.label_id under
@@ -642,12 +646,12 @@ func (r *detectionRepository) buildSearchJoins(query *gorm.DB, filters *SearchFi
 		// labels first and index-join into detections.
 		query = query.Joins(fmt.Sprintf("JOIN %s ON %s.id = %s.label_id",
 			r.labelsTable(), r.labelsTable(), r.tableName())).
-			Where(fmt.Sprintf("(%s.scientific_name LIKE ? OR %s.id IN ?)",
-				r.labelsTable(), r.labelsTable()), "%"+filters.Query+"%", filters.CommonLabelIDs)
+			Where(fmt.Sprintf("(%s.scientific_name %s ? OR %s.id IN ?)",
+				r.labelsTable(), likeOperator, r.labelsTable()), "%"+filters.Query+"%", filters.CommonLabelIDs)
 	case hasQuery:
 		query = query.Joins(fmt.Sprintf("JOIN %s ON %s.id = %s.label_id",
 			r.labelsTable(), r.labelsTable(), r.tableName())).
-			Where(fmt.Sprintf("%s.scientific_name LIKE ?", r.labelsTable()), "%"+filters.Query+"%")
+			Where(fmt.Sprintf("%s.scientific_name %s ?", r.labelsTable(), likeOperator), "%"+filters.Query+"%")
 	case hasCommon:
 		query = query.Where(fmt.Sprintf("%s.label_id IN ?", r.tableName()), filters.CommonLabelIDs)
 	}
@@ -861,7 +865,7 @@ func (r *detectionRepository) GetTopSpecies(ctx context.Context, start, end int6
 		query = query.Where(fmt.Sprintf("%s.scientific_name IN ?", labTable), species)
 	}
 
-	query = query.Group("label_id").Order("count DESC, label_id ASC")
+	query = query.Group(detTable + ".label_id, " + labTable + ".scientific_name").Order("count DESC, label_id ASC")
 
 	// limit <= 0 means "no limit". Callers with an explicit species filter pass 0 so a species that
 	// owns several model labels is not truncated to fewer rows than the number of selected species
@@ -899,7 +903,7 @@ func (r *detectionRepository) GetBatchHourlyOccurrences(ctx context.Context, lab
 	}
 
 	// Bucket by wall-clock hour in the configured timezone (offset-adjusted); exclude false positives.
-	hourExpr := wallClockHourSQL("d.detected_at", segmentOffsetSQL(seg), r.isMySQL)
+	hourExpr := wallClockHourSQLForDB("d.detected_at", segmentOffsetSQL(seg), r.db.Name())
 	detTable := r.tableName()
 	revTable := r.reviewsTable()
 
@@ -1119,7 +1123,7 @@ func (r *detectionRepository) GetTopSpeciesByModel(ctx context.Context, modelID 
 		Joins(fmt.Sprintf("JOIN %s ON %s.id = %s.label_id",
 			r.labelsTable(), r.labelsTable(), r.tableName())).
 		Where(fmt.Sprintf("%s.model_id = ?", r.tableName()), modelID).
-		Group("label_id").
+		Group(r.tableName() + ".label_id, " + r.labelsTable() + ".scientific_name").
 		Order("count DESC, label_id ASC").
 		Limit(limit).
 		Scan(&results).Error
@@ -1269,7 +1273,7 @@ func (r *detectionRepository) SavePredictionsBatch(ctx context.Context, preds []
 	}
 	return datastore.RetryOnLock(ctx, "v2_save_predictions_batch", func() error {
 		return r.db.WithContext(ctx).Table(r.predictionsTable()).
-			Clauses(onConflictSkip(r.isMySQL, detectionIDColumn)).
+			Clauses(onConflictSkip(r.db.Name(), detectionIDColumn)).
 			CreateInBatches(preds, defaultDBBatchSize).Error
 	}, r.metrics)
 }
@@ -1384,7 +1388,7 @@ func (r *detectionRepository) SaveReviewsBatch(ctx context.Context, reviews []*e
 	}
 	return datastore.RetryOnLock(ctx, "v2_save_reviews_batch", func() error {
 		return r.db.WithContext(ctx).Table(r.reviewsTable()).
-			Clauses(onConflictSkip(r.isMySQL, detectionIDColumn)).
+			Clauses(onConflictSkip(r.db.Name(), detectionIDColumn)).
 			CreateInBatches(reviews, defaultDBBatchSize).Error
 	}, r.metrics)
 }
@@ -1491,7 +1495,7 @@ func (r *detectionRepository) SaveCommentsBatch(ctx context.Context, comments []
 	}
 	return datastore.RetryOnLock(ctx, "v2_save_comments_batch", func() error {
 		return r.db.WithContext(ctx).Table(r.commentsTable()).
-			Clauses(onConflictSkip(r.isMySQL, detectionIDColumn)).
+			Clauses(onConflictSkip(r.db.Name(), detectionIDColumn)).
 			CreateInBatches(comments, defaultDBBatchSize).Error
 	}, r.metrics)
 }
@@ -1593,7 +1597,7 @@ func (r *detectionRepository) SaveLocksBatch(ctx context.Context, locks []*entit
 	}
 	return datastore.RetryOnLock(ctx, "v2_save_locks_batch", func() error {
 		return r.db.WithContext(ctx).Table(r.locksTable()).
-			Clauses(onConflictSkip(r.isMySQL, detectionIDColumn)).
+			Clauses(onConflictSkip(r.db.Name(), detectionIDColumn)).
 			CreateInBatches(locks, defaultDBBatchSize).Error
 	}, r.metrics)
 }
@@ -1707,7 +1711,7 @@ func (r *detectionRepository) GetHourlyDistribution(ctx context.Context, seg wal
 
 	// Bucket by wall-clock hour at the segment's offset via wallClockHourSQL.
 	// Exclude detections marked as false_positive
-	hourExpr := wallClockHourSQL("d.detected_at", segmentOffsetSQL(seg), r.isMySQL)
+	hourExpr := wallClockHourSQLForDB("d.detected_at", segmentOffsetSQL(seg), r.db.Name())
 	query := r.buildAnalyticsBaseQuery(ctx, seg.Start, seg.End, labelIDs, modelID).
 		Select(fmt.Sprintf("%s as hour, COUNT(*) as count", hourExpr)).
 		Group("hour").
@@ -1735,7 +1739,7 @@ func (r *detectionRepository) GetDailyAnalytics(ctx context.Context, seg wallclo
 
 	// Group by wall-clock date at the segment's offset.
 	// Exclude detections marked as false_positive
-	dateExpr := wallClockDateSQL("d.detected_at", segmentOffsetSQL(seg), r.isMySQL)
+	dateExpr := wallClockDateSQLForDB("d.detected_at", segmentOffsetSQL(seg), r.db.Name())
 	query := r.buildAnalyticsBaseQuery(ctx, seg.Start, seg.End, labelIDs, modelID).
 		Select(fmt.Sprintf(`
 			%s as date,

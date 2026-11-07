@@ -412,7 +412,7 @@ func (ds *Datastore) Close() error {
 		if sqliteMgr, ok := ds.manager.(*v2.SQLiteManager); ok {
 			sqliteMgr.StopPeriodicCheckpoint()
 		}
-		if !ds.manager.IsMySQL() {
+		if v2.DialectName(ds.manager) == datastore.DialectSQLite {
 			log.Info("performing SQLite WAL checkpoint",
 				logger.String("operation", "wal_checkpoint_before_shutdown"),
 				logger.String("mode", "v2only"))
@@ -450,7 +450,7 @@ func (ds *Datastore) SetSunCalcMetrics(suncalcMetrics any) {
 
 // Optimize performs database optimization.
 func (ds *Datastore) Optimize(ctx context.Context) error {
-	if !ds.manager.IsMySQL() {
+	if v2.DialectName(ds.manager) == datastore.DialectSQLite {
 		db := ds.manager.DB()
 		if err := db.WithContext(ctx).Exec("VACUUM").Error; err != nil {
 			return fmt.Errorf("VACUUM failed: %w", err)
@@ -675,10 +675,7 @@ func (ds *Datastore) GetDatabaseStats(ctx context.Context) (*datastore.DatabaseS
 		return nil, err
 	}
 
-	dbType := "sqlite"
-	if ds.manager.IsMySQL() {
-		dbType = "mysql"
-	}
+	dbType := v2.DialectName(ds.manager)
 
 	stats := &datastore.DatabaseStats{
 		Type:            dbType,
@@ -689,9 +686,12 @@ func (ds *Datastore) GetDatabaseStats(ctx context.Context) (*datastore.DatabaseS
 
 	// Get database size (best-effort); guard against nil DB after concurrent Close()
 	if db := ds.manager.DB(); db != nil {
-		if !ds.manager.IsMySQL() {
+		switch dbType {
+		case v2.DialectPostgres:
+			_ = db.WithContext(ctx).Raw("SELECT pg_database_size(current_database())").Scan(&stats.SizeBytes).Error
+		case datastore.DialectSQLite:
 			_ = db.WithContext(ctx).Raw("SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size()").Scan(&stats.SizeBytes).Error
-		} else {
+		case datastore.DialectMySQL:
 			_ = db.WithContext(ctx).Raw(`
 				SELECT SUM(DATA_LENGTH + INDEX_LENGTH)
 				FROM information_schema.TABLES

@@ -22,7 +22,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/tphakala/birdnet-go/internal/api/v2/apicore"
 	"github.com/tphakala/birdnet-go/internal/conf"
-	"github.com/tphakala/birdnet-go/internal/datastore"
+	datastoreV2 "github.com/tphakala/birdnet-go/internal/datastore/v2"
 	"github.com/tphakala/birdnet-go/internal/logger"
 	supportpkg "github.com/tphakala/birdnet-go/internal/support"
 	"github.com/tphakala/birdnet-go/internal/telemetry"
@@ -212,10 +212,7 @@ func (c *Handler) GenerateSupportDump(ctx echo.Context) error {
 
 	// Wire database info provider if V2Manager is available
 	if req.IncludeDatabaseInfo && c.V2Manager != nil && c.DS != nil {
-		dialect := datastore.DialectSQLite
-		if c.V2Manager.IsMySQL() {
-			dialect = datastore.DialectMySQL
-		}
+		dialect := datastoreV2.DialectName(c.V2Manager)
 		dbCollector := supportpkg.NewGormDatabaseInfoCollector(
 			c.V2Manager.DB(),
 			dialect,

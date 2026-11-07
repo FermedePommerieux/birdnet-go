@@ -39,7 +39,7 @@
     if (engine === 'sqlite') {
       return journalMode ? `SQLite (${journalMode.toUpperCase()})` : 'SQLite';
     }
-    return 'MySQL';
+    return engine === 'postgres' ? 'PostgreSQL' : 'MySQL';
   });
 </script>
 

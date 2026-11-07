@@ -469,6 +469,9 @@ func initializeV2OnlyMode(settings *conf.Settings, mysqlFreshV2 bool) (*v2only.D
 			useV2Prefix = false
 		}
 
+	case settings.Output.PostgreSQL.Enabled:
+		v2Manager, err = datastoreV2.NewPostgresManager(&settings.Output.PostgreSQL)
+
 	case settings.Output.MySQL.Enabled:
 		// Fresh v2 tables exist (no prefix) or migration tables (v2_ prefix); the caller read it.
 		useV2Prefix = !mysqlFreshV2
@@ -516,7 +519,7 @@ func initializeV2OnlyMode(settings *conf.Settings, mysqlFreshV2 bool) (*v2only.D
 
 	// Create repositories
 	v2DB := v2Manager.DB()
-	isMySQL := settings.Output.MySQL.Enabled // Determine dialect from settings
+	isMySQL := v2Manager.IsMySQL()
 	detectionRepo := repository.NewDetectionRepository(v2DB, nil, useV2Prefix, isMySQL)
 	labelRepo := repository.NewLabelRepository(v2DB, nil, useV2Prefix, isMySQL)
 	modelRepo := repository.NewModelRepository(v2DB, nil, useV2Prefix, isMySQL)

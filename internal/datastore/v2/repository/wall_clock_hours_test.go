@@ -308,3 +308,26 @@ func TestWallClockSQLText(t *testing.T) {
 		})
 	}
 }
+
+func TestPostgresWallClockSQLText(t *testing.T) {
+	t.Parallel()
+
+	const column, offset = "d.detected_at", "-18000"
+	assert.Equal(t,
+		"to_char(TIMESTAMP '1970-01-01 00:00:00' + (d.detected_at + -18000) * INTERVAL '1 second', 'YYYY-MM-DD')",
+		wallClockDateSQLForDB(column, offset, "postgres"))
+	assert.Equal(t,
+		"((((d.detected_at + -18000) % 86400) + 86400) % 86400) / 3600",
+		wallClockHourSQLForDB(column, offset, "postgres"))
+	assert.Equal(t,
+		"EXTRACT(YEAR FROM TIMESTAMP '1970-01-01 00:00:00' + (d.detected_at + -18000) * INTERVAL '1 second')::integer",
+		wallClockYearSQLForDB(column, offset, "postgres"))
+
+	from := utc(2026, time.March, 28, 0, 0, 0).Unix()
+	to := utc(2026, time.March, 30, 0, 0, 0).Unix()
+	zone, err := time.LoadLocation("Europe/Helsinki")
+	require.NoError(t, err)
+	dateExpr := WallClockDateExprForDB(column, zone, from, to, "postgres")
+	assert.Contains(t, dateExpr, "CASE WHEN d.detected_at >= ")
+	assert.Contains(t, dateExpr, "to_char(TIMESTAMP '1970-01-01 00:00:00'")
+}

@@ -7,7 +7,19 @@ import (
 	"time"
 
 	"github.com/tphakala/birdnet-go/internal/wallclock"
+	"gorm.io/gorm"
 )
+
+func repositoryDialect(db *gorm.DB, isMySQL bool) string {
+	if db != nil {
+		return db.Name()
+	}
+	// A few SQL builder tests construct a repository without a database.
+	if isMySQL {
+		return "mysql"
+	}
+	return "sqlite"
+}
 
 const (
 	// wallClockSecondsPerHour turns a second of the day into an hour of day in the SQL builders.
@@ -45,6 +57,16 @@ func wallClockDateSQL(column, offsetSQL string, isMySQL bool) string {
 	return fmt.Sprintf("date(%s + %s, 'unixepoch')", column, offsetSQL)
 }
 
+// wallClockDateSQLForDB uses PostgreSQL's timestamp arithmetic when the active
+// GORM driver is postgres. The timestamp is without time zone so the expression
+// is independent of the database connection's TimeZone setting.
+func wallClockDateSQLForDB(column, offsetSQL, dialect string) string {
+	if dialect == "postgres" {
+		return fmt.Sprintf("to_char(TIMESTAMP '1970-01-01 00:00:00' + (%s + %s) * INTERVAL '1 second', 'YYYY-MM-DD')", column, offsetSQL)
+	}
+	return wallClockDateSQL(column, offsetSQL, dialect == "mysql")
+}
+
 // wallClockHourSQL returns a SQL expression for the wall-clock hour (0-23) of column, a Unix
 // timestamp, shifted by offsetSQL, a SQL expression for the UTC offset in seconds. The result
 // is in 0-23 for every value of column + offset, including those before 1970 (floor semantics,
@@ -66,6 +88,17 @@ func wallClockHourSQL(column, offsetSQL string, isMySQL bool) string {
 	return fmt.Sprintf("CAST((%s) / %d AS INTEGER)", secondOfDay, wallClockSecondsPerHour)
 }
 
+func wallClockHourSQLForDB(column, offsetSQL, dialect string) string {
+	if dialect == "postgres" {
+		secondOfDay := fmt.Sprintf("(((%s + %s) %% %d) + %d) %% %d",
+			column, offsetSQL, wallClockSecondsPerDay, wallClockSecondsPerDay, wallClockSecondsPerDay)
+		// The double modulo makes the dividend non-negative, so PostgreSQL's
+		// integer division already has floor semantics.
+		return fmt.Sprintf("(%s) / %d", secondOfDay, wallClockSecondsPerHour)
+	}
+	return wallClockHourSQL(column, offsetSQL, dialect == "mysql")
+}
+
 // wallClockYearSQL returns a SQL expression for the wall-clock calendar year of column, a Unix
 // timestamp, shifted by offsetSQL, a SQL expression for the UTC offset in seconds. It is exact
 // for every value of column + offset, including those before 1970.
@@ -77,6 +110,13 @@ func wallClockYearSQL(column, offsetSQL string, isMySQL bool) string {
 		return fmt.Sprintf("YEAR(DATE_ADD('%s', INTERVAL (%s + %s) SECOND))", sqlUnixEpochDate, column, offsetSQL)
 	}
 	return fmt.Sprintf("CAST(strftime('%%Y', %s + %s, 'unixepoch') AS INTEGER)", column, offsetSQL)
+}
+
+func wallClockYearSQLForDB(column, offsetSQL, dialect string) string {
+	if dialect == "postgres" {
+		return fmt.Sprintf("EXTRACT(YEAR FROM TIMESTAMP '1970-01-01 00:00:00' + (%s + %s) * INTERVAL '1 second')::integer", column, offsetSQL)
+	}
+	return wallClockYearSQL(column, offsetSQL, dialect == "mysql")
 }
 
 // segmentOffsetSQL returns the offset fragment for a query that runs over the single segment
@@ -141,13 +181,19 @@ func WallClockDateExpr(column string, loc *time.Location, from, to int64, isMySQ
 	return wallClockDateSQL(column, spanOffsetSQL(column, loc, from, to), isMySQL)
 }
 
+// WallClockDateExprForDB returns a wall-clock date expression for the active
+// dialect. Existing callers of WallClockDateExpr retain their original API.
+func WallClockDateExprForDB(column string, loc *time.Location, from, to int64, dialect string) string {
+	return wallClockDateSQLForDB(column, spanOffsetSQL(column, loc, from, to), dialect)
+}
+
 // wallClockHourExpr returns a SQL expression for the wall-clock hour (0-23) of column, a Unix
 // timestamp, in loc (nil means UTC). Each row is shifted by the UTC offset in effect at its own
 // instant: the offset changes of loc inside [from, to) become a CASE over the column, see
 // zoneOffsetSQL. Rows outside [from, to) are not excluded here; the range predicates do that.
 // The SQL forms are those of wallClockHourSQL.
 func (r *detectionRepository) wallClockHourExpr(column string, loc *time.Location, from, to int64) string {
-	return wallClockHourSQL(column, spanOffsetSQL(column, loc, from, to), r.isMySQL)
+	return wallClockHourSQLForDB(column, spanOffsetSQL(column, loc, from, to), repositoryDialect(r.db, r.isMySQL))
 }
 
 // zoneOffsetSQL returns a SQL expression for the UTC offset in seconds that applies to column,

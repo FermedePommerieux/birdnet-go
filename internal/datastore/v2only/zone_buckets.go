@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tphakala/birdnet-go/internal/datastore"
+	v2 "github.com/tphakala/birdnet-go/internal/datastore/v2"
 	"github.com/tphakala/birdnet-go/internal/datastore/v2/repository"
 	"github.com/tphakala/birdnet-go/internal/wallclock"
 )
@@ -29,7 +30,7 @@ func (ds *Datastore) zoneSegments(start, end int64) []wallclock.Segment {
 // [start, end), see repository.WallClockDateExpr.
 func (ds *Datastore) dateExpr(start, end int64) string {
 	from, to := wallclock.Span(start, end, time.Now())
-	return repository.WallClockDateExpr("d.detected_at", ds.timezone, from, to, ds.manager.IsMySQL())
+	return repository.WallClockDateExprForDB("d.detected_at", ds.timezone, from, to, v2.DialectName(ds.manager))
 }
 
 // hourlyCountsByZone returns the number of detections in each local hour of [start, end) for the

@@ -2,11 +2,11 @@
   import { t } from '$lib/i18n';
   import { Download, Database } from '@lucide/svelte';
   import DetectionRateChart from './DetectionRateChart.svelte';
-  import type { HourlyCount } from '$lib/types/database';
+  import type { DatabaseOverviewResponse, HourlyCount } from '$lib/types/database';
 
   interface Props {
     data: HourlyCount[];
-    engine: 'sqlite' | 'mysql';
+    engine: DatabaseOverviewResponse['engine'];
     mysqlHost?: string;
     onBackup?: () => void;
   }

@@ -12,17 +12,18 @@ import (
 // DatabaseOverviewResponse is the response for GET /api/v2/system/database/overview.
 // It adapts to the active database engine via the Engine field.
 type DatabaseOverviewResponse struct {
-	Engine           string                     `json:"engine"`           // "sqlite" or "mysql"
-	Status           string                     `json:"status"`           // "connected" or "disconnected"
-	Location         string                     `json:"location"`         // file path or host:port/db
-	SizeBytes        int64                      `json:"size_bytes"`       // total database size
-	TotalDetections  int64                      `json:"total_detections"` // total detection count
-	TotalTables      int                        `json:"total_tables"`     // number of user tables
-	SQLite           *datastore.SQLiteDetails   `json:"sqlite,omitempty"`
-	MySQL            *datastore.MySQLDetails    `json:"mysql,omitempty"`
-	Tables           []datastore.TableStats     `json:"tables"`
-	Performance      datastore.PerformanceStats `json:"performance"`
-	DetectionRate24h []datastore.HourlyCount    `json:"detection_rate_24h"`
+	Engine           string                       `json:"engine"`           // GORM dialect name
+	Status           string                       `json:"status"`           // "connected" or "disconnected"
+	Location         string                       `json:"location"`         // file path or host:port/db
+	SizeBytes        int64                        `json:"size_bytes"`       // total database size
+	TotalDetections  int64                        `json:"total_detections"` // total detection count
+	TotalTables      int                          `json:"total_tables"`     // number of user tables
+	SQLite           *datastore.SQLiteDetails     `json:"sqlite,omitempty"`
+	MySQL            *datastore.MySQLDetails      `json:"mysql,omitempty"`
+	PostgreSQL       *datastore.PostgreSQLDetails `json:"postgresql,omitempty"`
+	Tables           []datastore.TableStats       `json:"tables"`
+	Performance      datastore.PerformanceStats   `json:"performance"`
+	DetectionRate24h []datastore.HourlyCount      `json:"detection_rate_24h"`
 }
 
 // Database connection status constants.
@@ -79,6 +80,7 @@ func (c *Handler) GetDatabaseOverview(ctx echo.Context) error {
 		} else {
 			resp.SQLite = details.SQLite
 			resp.MySQL = details.MySQL
+			resp.PostgreSQL = details.PostgreSQL
 		}
 
 		// Table stats

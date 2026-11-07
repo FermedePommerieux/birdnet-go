@@ -73,6 +73,20 @@ type Manager interface {
 	TablePrefix() string
 }
 
+// DialectPostgres is the GORM dialect name for PostgreSQL.
+const DialectPostgres = "postgres"
+
+// DialectName returns a manager's SQL dialect without requiring an open DB handle.
+func DialectName(manager Manager) string {
+	if _, ok := manager.(*PostgresManager); ok {
+		return DialectPostgres
+	}
+	if manager.IsMySQL() {
+		return "mysql"
+	}
+	return "sqlite"
+}
+
 // Config holds database configuration for the v2 manager.
 type Config struct {
 	// ConfiguredPath is the user's configured database path (e.g., /data/birdnet.db).

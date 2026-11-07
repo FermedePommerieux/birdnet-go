@@ -64,7 +64,7 @@ export interface HourlyCount {
 
 /** Top-level database overview response */
 export interface DatabaseOverviewResponse {
-  engine: 'sqlite' | 'mysql';
+  engine: 'sqlite' | 'mysql' | 'postgres';
   status: string;
   location: string;
   size_bytes: number;
@@ -72,6 +72,14 @@ export interface DatabaseOverviewResponse {
   total_tables: number;
   sqlite?: SQLiteDetails;
   mysql?: MySQLDetails;
+  postgresql?: {
+    engine_version: string;
+    database_size_bytes: number;
+    active_connections: number;
+    idle_connections: number;
+    max_connections: number;
+    wait_count: number;
+  };
   tables: TableStats[] | null;
   performance: PerformanceStats;
   detection_rate_24h: HourlyCount[] | null;

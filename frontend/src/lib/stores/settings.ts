@@ -200,6 +200,12 @@ export interface MySQLSettings {
 export interface OutputSettings {
   sqlite: SQLiteSettings;
   mysql: MySQLSettings;
+  postgresql?: MySQLSettings & {
+    sslMode: string;
+    sslRootCert: string;
+    sslCert: string;
+    sslKey: string;
+  };
 }
 
 // AudioSourceConfig represents a single sound card audio source
