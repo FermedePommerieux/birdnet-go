@@ -1,9 +1,9 @@
 name: Build dev container images
 
-# Add concurrency configuration to handle multiple pushes
+# Finish publishing before the next push starts, including first-time base builds.
 concurrency:
   group: docker-build-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   schedule:
