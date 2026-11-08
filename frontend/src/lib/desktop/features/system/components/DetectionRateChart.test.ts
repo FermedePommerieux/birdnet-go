@@ -6,11 +6,20 @@ import DetectionRateChart from './DetectionRateChart.svelte';
 describe('DetectionRateChart', () => {
   afterEach(() => {
     cleanup();
-    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it('shows distinct offsets for the repeated local hour in bar tooltips', () => {
-    vi.stubEnv('TZ', 'Europe/Paris');
+    // Set the simulated browser timezone, independent of the Vitest worker's TZ.
+    const DateTimeFormat = Intl.DateTimeFormat;
+    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
+      function DateTimeFormatWithParis(locales, options) {
+        return new DateTimeFormat(locales, {
+          ...options,
+          timeZone: options?.timeZone ?? 'Europe/Paris',
+        });
+      }
+    );
     const { container } = renderTyped(DetectionRateChart, {
       props: {
         data: [

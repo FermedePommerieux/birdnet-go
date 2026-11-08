@@ -11,7 +11,7 @@ body:
         Tip: the dashboard has a guided **Help -> Report a Bug** page (in the sidebar) that gathers your version, build date, OS and hardware with a one-click **Copy** button, and can generate a support dump. Using it makes filling out this form much easier.
 
         Before submitting, please make sure:
-        1. You are running the **latest release**. Check your version against the releases page and upgrade if you are behind: https://github.com/tphakala/birdnet-go/releases
+        1. You are running the **latest fork release**. Check your version against https://github.com/FermedePommerieux/birdnet-go/releases and upgrade if you are behind.
         2. You have searched existing issues (open and closed) for duplicates.
 
         **Bug reports with missing required information will be closed without investigation**, without the details below it is not possible to debug the issue.
@@ -34,8 +34,7 @@ body:
         Note: `install.sh` installs BirdNET-Go as a Docker container managed by a systemd service. It is NOT a native binary install. If you installed through a third-party or community package (Home Assistant add-on, DietPi, Unraid, etc.), please pick that option. Those images are maintained outside this project and may lag behind the latest release.
       options:
         - Docker via install.sh (recommended installer script)
-        - Docker run / docker-compose (manual, ghcr.io/tphakala/birdnet-go)
-        - Docker run / docker-compose (manual, Docker Hub tphakala/birdnet-go)
+        - Docker run / docker-compose (manual, ghcr.io/fermedepommerieux/birdnet-go)
         - Podman / rootless container
         - Native binary (downloaded release, no container)
         - Built from source
@@ -161,13 +160,10 @@ body:
     attributes:
       label: Support dump (optional, but the single most helpful thing you can add)
       description: |
-        A support dump captures your config, logs, OS and hardware automatically, so I do not have to rely on the fields above (which are easy to fill in wrong). Two ways to send one:
+        A support dump captures configuration, logs, OS and hardware automatically, which gives maintainers useful diagnostic context.
 
-        1. **Upload (recommended):** after you submit this issue, open **Help -> Report a Bug -> Generate Support Dump** in the dashboard, enter THIS issue's number in the GitHub issue field, and upload. That links the dump to this issue for me automatically; you do not need to paste anything here.
-        2. **Download and attach:** on the same page, untick the upload option to download the dump file, then drag it into this box.
-
-        Dumps are only accessible to the maintainer, not shown publicly. If you already have a dump ID from a previous upload, paste it here too.
-      placeholder: "Drag a downloaded support dump file here, or paste an existing dump ID."
+        Open **Help -> Report a Bug -> Generate Support Dump** in the dashboard and turn off the upload option to download the dump file. Review it and redact anything sensitive before attaching it here. Attachments to public issues are public. This fork does not configure a hosted dump upload service.
+      placeholder: "Attach a reviewed, redacted support dump if useful."
     validations:
       required: false
 
@@ -183,7 +179,7 @@ body:
     attributes:
       label: Pre-submission checks
       options:
-        - label: I am running the [latest release](https://github.com/tphakala/birdnet-go/releases) or have tested with the `:dev` container image.
+        - label: I am running the [latest fork release](https://github.com/FermedePommerieux/birdnet-go/releases) or have tested with the fork's `:dev` container image.
           required: true
         - label: I have searched existing open and closed issues and this does not appear to be a duplicate.
           required: true

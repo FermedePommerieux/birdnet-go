@@ -159,20 +159,20 @@ interface AppState {
 }
 
 /**
- * Upstream project links used as a fallback before the backend config loads
+ * Fork project links used as a fallback before the backend config loads
  * (and on the pre-config server-error screen). Once the app-config response
  * arrives, these are replaced by the backend-resolved branding values, so a
  * fork's configured links take over for the entire authenticated UI.
  */
 const DEFAULT_PROJECT_LINKS: ProjectLinks = {
-  name: 'BirdNET-Go',
-  repoUrl: 'https://github.com/tphakala/birdnet-go',
-  issuesUrl: 'https://github.com/tphakala/birdnet-go/issues',
-  newIssueUrl: 'https://github.com/tphakala/birdnet-go/issues/new',
-  supportUrl: 'https://github.com/tphakala/birdnet-go',
-  discussionsUrl: 'https://github.com/tphakala/birdnet-go/discussions',
-  releasesUrl: 'https://github.com/tphakala/birdnet-go/releases',
-  communityUrl: 'https://discord.gg/gcSCFGUtsd',
+  name: 'BirdNET-Go PostgreSQL',
+  repoUrl: 'https://github.com/FermedePommerieux/birdnet-go',
+  issuesUrl: 'https://github.com/FermedePommerieux/birdnet-go/issues',
+  newIssueUrl: 'https://github.com/FermedePommerieux/birdnet-go/issues/new',
+  supportUrl: 'https://github.com/FermedePommerieux/birdnet-go',
+  discussionsUrl: 'https://github.com/FermedePommerieux/birdnet-go/discussions',
+  releasesUrl: 'https://github.com/FermedePommerieux/birdnet-go/releases',
+  communityUrl: 'https://github.com/FermedePommerieux/birdnet-go/discussions',
 };
 
 /**

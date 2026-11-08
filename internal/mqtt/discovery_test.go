@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tphakala/birdnet-go/internal/branding"
 	"github.com/tphakala/birdnet-go/internal/conf"
 	"github.com/tphakala/birdnet-go/internal/datastore"
 	"github.com/tphakala/birdnet-go/internal/errors"
@@ -227,7 +228,7 @@ func TestPublishBridgeDiscovery(t *testing.T) {
 
 	// Verify device info
 	assert.Equal(t, "BirdNET-Go", payload.Device.Name)
-	assert.Equal(t, "BirdNET-Go", payload.Device.Manufacturer)
+	assert.Equal(t, branding.Name(), payload.Device.Manufacturer)
 	assert.Equal(t, "Bridge", payload.Device.Model)
 	assert.Equal(t, "1.0.0", payload.Device.SWVersion)
 	assert.Contains(t, payload.Device.Identifiers, "birdnet_go_test-node_bridge")
