@@ -49,7 +49,11 @@ If the database cannot open at startup, the error identifies the relevant `outpu
 
 Selecting an empty PostgreSQL database starts a new history. Changing the backend in Settings or running the installer does not transfer detections. This fork has no integrated SQLite-to-PostgreSQL or MySQL-to-PostgreSQL transfer tool. The existing legacy-to-v2 migration operates within SQLite or MySQL/MariaDB, and `tools/dbexport` targets MySQL from legacy SQLite. Keep the original database and its backups when evaluating the new backend. Use PostgreSQL tools such as `pg_dump` and `pg_restore` for PostgreSQL backups. The in-app database download and Database Doctor operate on SQLite files.
 
-## Reproduce the tests
+## Developer validation (optional)
+
+This section is for contributors testing changes to the fork. These commands are not installation or configuration steps, and you do not need to run them to use PostgreSQL.
+
+### PostgreSQL tests
 
 Follow the repository's Go build prerequisites. Start an isolated development PostgreSQL server and give the **test role** the `CREATEDB` privilege. The test helper connects to its `postgres` maintenance database, creates a unique disposable database per test, and drops it during cleanup. Test connections use loopback and unencrypted transport by default. The application role only needs rights on its own database and schema.
 
@@ -71,7 +75,11 @@ The suite exercises bootstrap, restart, connection loss, related detection data,
 | SQLite 3.53.4                    | Existing Go datastore and v2-only tests, including time-zone analytics.                                                                                                                                                        |
 | MySQL 8.4.13 and MariaDB 11.4.13 | The existing range analytics and threshold retry integration tests passed against both server images.                                                                                                                          |
 
-To repeat the two server regression tests, run the following command with a local Docker test environment and a supported image. Repeat with `MYSQL_TEST_IMAGE=mariadb:11.4`.
+### MySQL and MariaDB regression checks
+
+These two tests check that changes made for PostgreSQL have not broken the other server backends. They verify date and time calculations, and that retrying a threshold save after an interrupted connection does not create duplicate entries. They do not test or configure PostgreSQL.
+
+From the repository directory, with the Go build prerequisites installed and Docker running, run the command below. The tests create temporary database containers. `MYSQL_TEST_IMAGE=mysql:8.4` selects MySQL 8.4 for this test run; to check MariaDB instead, run the same command with that value changed to `MYSQL_TEST_IMAGE=mariadb:11.4`. This variable does not change the database used by your BirdNET-Go installation.
 
 ```sh
 MYSQL_TEST_IMAGE=mysql:8.4 go test -tags integration,noembed,skipfrontend -race -count=1 \
