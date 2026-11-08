@@ -139,7 +139,8 @@ func TestDatabaseServerVersionCheck_PostgreSQL(t *testing.T) {
 		message string
 	}{
 		{"supported", dbserver.PostgreSQLReport{Version: "17.4", VersionNum: 170004}, nil, health.StatusHealthy, "supported release"},
-		{"unsupported", dbserver.PostgreSQLReport{Version: "12.9", VersionNum: 120009}, nil, health.StatusWarning, "Upgrade to a supported PostgreSQL release"},
+		{"older untested major", dbserver.PostgreSQLReport{Version: "12.9", VersionNum: 120009}, nil, health.StatusWarning, "Use a tested stable PostgreSQL major (17, 18)"},
+		{"newer untested major", dbserver.PostgreSQLReport{Version: "19.1", VersionNum: 190001}, nil, health.StatusWarning, "Use a tested stable PostgreSQL major (17, 18)"},
 		{"missing version", dbserver.PostgreSQLReport{}, nil, health.StatusUnknown, "could not be determined"},
 		{"query error", dbserver.PostgreSQLReport{}, errors.NewStd("secret connection string"), health.StatusUnknown, "Unable to read"},
 	}
