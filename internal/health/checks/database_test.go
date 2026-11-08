@@ -32,11 +32,11 @@ func TestDatabaseSizeCheck_Run(t *testing.T) {
 		wantSize    int64
 		wantPath    bool
 	}{
-		{"mysql schema size", probe(serverSizeBytes, true, nil), health.StatusHealthy, "5.0 MB", serverSizeBytes, false},
-		{"mysql schema above the sqlite warning size", probe(warnSizeBytes+1, true, nil), health.StatusHealthy, "Database size OK", warnSizeBytes + 1, false},
+		{"server database size", probe(serverSizeBytes, true, nil), health.StatusHealthy, "5.0 MB", serverSizeBytes, false},
+		{"postgres database above the sqlite warning size", probe(warnSizeBytes+1, true, nil), health.StatusHealthy, "Database size OK", warnSizeBytes + 1, false},
 		{"probe error", probe(0, true, errors.NewStd("connection refused")), health.StatusUnknown, "Unable to read the database size: connection refused", 0, false},
 		{"probe error while not applicable", probe(0, false, errors.NewStd("connection refused")), health.StatusUnknown, "Unable to read the database size", 0, false},
-		{"not mysql uses the sqlite file", probe(0, false, nil), health.StatusHealthy, "Database size OK", int64(len(content)), true},
+		{"sqlite uses its database file", probe(0, false, nil), health.StatusHealthy, "Database size OK", int64(len(content)), true},
 		{"nil probe uses the sqlite file", nil, health.StatusHealthy, "Database size OK", int64(len(content)), true},
 	}
 	for _, tt := range tests {

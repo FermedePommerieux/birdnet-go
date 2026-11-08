@@ -78,7 +78,7 @@ func TestRegisterHealthChecks_PostgreSQLConfiguredWithoutManager(t *testing.T) {
 	for _, result := range h.healthRegistry.RunCategory(t.Context(), health.CategoryDatabase) {
 		statuses[result.Name] = result
 	}
-	for _, name := range []string{"database_server_version", "database_charset"} {
+	for _, name := range []string{"database_server_version", "database_charset", "database_size"} {
 		result, ok := statuses[name]
 		require.True(t, ok)
 		assert.Equal(t, health.StatusUnknown, result.Status)

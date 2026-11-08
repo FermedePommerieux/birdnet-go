@@ -92,6 +92,8 @@ const (
 // refuses to continue because the database state could not be read.
 const startupStateUnknownRecoveryHint = "make sure the MySQL or MariaDB server is running and reachable from BirdNET-Go, then restart BirdNET-Go"
 
+const postgresStartupRecoveryHint = "check output.postgresql settings, PostgreSQL server availability and access, then restart BirdNET-Go"
+
 // Operations that start the text of a classified start error.
 const (
 	// opRefuseStart starts the text of a refusal after the database server rejected the connection.
@@ -440,7 +442,11 @@ func (d *DatabaseService) Start(ctx context.Context) error {
 	// open another configured path or construct the legacy store.
 	if settings.Output.PostgreSQL.Enabled {
 		if err != nil {
-			return err
+			datastoreLog.Error("could not read PostgreSQL database state at startup, refusing to start",
+				logger.Error(err),
+				logger.String("operation", operationStartupReconciliation),
+				logger.String("recovery_hint", postgresStartupRecoveryHint))
+			return fmt.Errorf("%w; %s", err, postgresStartupRecoveryHint)
 		}
 		if reading.state.Error != nil {
 			return reading.state.Error

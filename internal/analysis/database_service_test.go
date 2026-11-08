@@ -548,6 +548,26 @@ func TestDatabaseService_Start_StartupStateUnknownRefuses(t *testing.T) {
 	}
 }
 
+func TestDatabaseService_Start_PostgresUnavailableReportsRecoveryHint(t *testing.T) {
+	settings := &conf.Settings{}
+	settings.Output.PostgreSQL.Enabled = true
+	buf := logtest.CaptureBufferAt(t, slog.LevelError)
+	metrics, err := observability.NewMetrics()
+	require.NoError(t, err)
+	svc := NewDatabaseService(settings, metrics)
+	svc.checkStartupState = func(*conf.Settings) datastoreV2.StartupState {
+		return unknownStateOutcome(fmt.Errorf("PostgreSQL connection failed: dial tcp: connection refused; check output.postgresql.host and output.postgresql.port"))
+	}
+	svc.waitStartupRetry = func(context.Context, time.Duration) error { return nil }
+
+	err = svc.Start(t.Context())
+	require.ErrorIs(t, err, datastoreV2.ErrStartupStateUnknown)
+	require.ErrorContains(t, err, postgresStartupRecoveryHint)
+	require.ErrorContains(t, err, "output.postgresql.host")
+	assert.Contains(t, buf.String(), postgresStartupRecoveryHint)
+	assert.Nil(t, svc.DataStore())
+}
+
 // TestDatabaseService_Start_ServerRejectionRefuses pins the early refusal of a MySQL or
 // MariaDB server that rejected the connection while the state was read: Start must
 // return a classified error before any datastore is constructed, instead of logging the

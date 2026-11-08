@@ -211,7 +211,7 @@ func checkPostgresMigrationState(settings *conf.Settings) StartupState {
 func inspectPostgresSchema(db *gorm.DB) StartupState {
 	var tableNames []string
 	if err := db.Raw("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = current_schema()").Scan(&tableNames).Error; err != nil {
-		return unknownStartupState(fmt.Errorf("%w: list PostgreSQL tables", ErrStartupStateUnknown))
+		return unknownStartupState(fmt.Errorf("%w: list PostgreSQL tables: %w", ErrStartupStateUnknown, postgresSafeError(err)))
 	}
 	if len(tableNames) == 0 {
 		return StartupState{
@@ -243,7 +243,7 @@ func inspectPostgresSchema(db *gorm.DB) StartupState {
 	}
 	var state entities.MigrationState
 	if err := db.Table("migration_states").Where("id = ?", 1).Take(&state).Error; err != nil {
-		return postgresCorruptedStartupState("could not read PostgreSQL v2 completion marker")
+		return postgresMarkerReadStartupState(err)
 	}
 	if state.State != entities.MigrationStatusCompleted {
 		return postgresCorruptedStartupState("PostgreSQL v2 migration is not completed")
@@ -251,10 +251,17 @@ func inspectPostgresSchema(db *gorm.DB) StartupState {
 	return completedV2StartupState(DecisionV2Restart)
 }
 
+func postgresMarkerReadStartupState(err error) StartupState {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return postgresCorruptedStartupState("PostgreSQL v2 completion marker is missing")
+	}
+	return unknownStartupState(fmt.Errorf("%w: read PostgreSQL v2 completion marker: %w", ErrStartupStateUnknown, postgresSafeError(err)))
+}
+
 func postgresCorruptedStartupState(reason string) StartupState {
 	return StartupState{
 		Decision: DecisionV2Corrupted,
-		Error:    fmt.Errorf("%w: %s", ErrV2DatabaseCorrupted, reason),
+		Error:    fmt.Errorf("%w: %s; check output.postgresql.database points to the intended completed v2 database", ErrV2DatabaseCorrupted, reason),
 	}
 }
 

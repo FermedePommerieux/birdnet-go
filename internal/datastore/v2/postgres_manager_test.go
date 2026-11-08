@@ -1,8 +1,11 @@
 package v2
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
 	"sync"
+	"syscall"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -70,6 +73,47 @@ func TestPostgresConnectionURLRedactsError(t *testing.T) {
 	cfg.Host = "host,other"
 	_, err := NewPostgresManager(cfg)
 	require.Error(t, err)
+}
+
+func TestPostgresStartupErrorsGiveSafeSettingsHints(t *testing.T) {
+	const secret = "user=secret_user password=secret_pw client=192.0.2.7 dsn=postgresql://secret_user:secret_pw@db.example/secret_db"
+	tests := []struct {
+		name string
+		err  error
+		want []string
+	}{
+		{"wrong password", &pgconn.PgError{Code: "28P01", Message: secret, Detail: secret}, []string{"SQLSTATE 28P01", "output.postgresql.username", "output.postgresql.password", "BIRDNET_POSTGRESQL_PASSWORD", "server authentication rules"}},
+		{"missing database", &pgconn.PgError{Code: "3D000", Message: secret}, []string{"SQLSTATE 3D000", "output.postgresql.database", "database exists"}},
+		{"schema permission", &pgconn.PgError{Code: "42501", Message: secret}, []string{"SQLSTATE 42501", "schema privileges", "output.postgresql.username"}},
+		{"certificate rejected", &tls.CertificateVerificationError{Err: fmt.Errorf("%s", secret)}, []string{"output.postgresql.host", "output.postgresql.sslrootcert"}},
+		{"server unavailable", &net.OpError{Op: "dial", Net: "tcp", Addr: &net.TCPAddr{IP: net.ParseIP("192.0.2.7"), Port: 5432}, Err: syscall.ECONNREFUSED}, []string{"connection refused", "output.postgresql.host", "output.postgresql.port", "server availability"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := postgresSafeError(fmt.Errorf("%s: %w", secret, tt.err))
+			for _, want := range tt.want {
+				assert.Contains(t, got.Error(), want)
+			}
+			for _, private := range []string{"secret_user", "secret_pw", "192.0.2.7", "postgresql://", "secret_db"} {
+				assert.NotContains(t, got.Error(), private)
+			}
+		})
+	}
+}
+
+func TestPostgresTransactionErrorSanitizesExternalFailures(t *testing.T) {
+	const secret = "postgresql://secret_user:secret_pw@192.0.2.7/secret_db"
+	for _, name := range []string{"BEGIN", "COMMIT"} {
+		t.Run(name, func(t *testing.T) {
+			got := postgresTransactionError(fmt.Errorf("%s failed for %s: TLS certificate rejected", name, secret), nil)
+			require.Error(t, got)
+			require.ErrorContains(t, got, "check output.postgresql")
+			assert.NotContains(t, got.Error(), secret)
+		})
+	}
+	callbackErr := fmt.Errorf("PostgreSQL preflight rejected settings: UTF8 required")
+	require.ErrorIs(t, postgresTransactionError(callbackErr, callbackErr), callbackErr)
+	assert.NoError(t, postgresTransactionError(nil, nil))
 }
 
 func TestPostgresRefusesUnrelatedSchema(t *testing.T) {

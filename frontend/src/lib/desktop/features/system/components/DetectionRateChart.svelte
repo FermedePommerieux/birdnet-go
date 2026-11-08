@@ -3,6 +3,7 @@
   import { max } from 'd3-array';
   import { t } from '$lib/i18n';
   import type { HourlyCount } from '$lib/types/database';
+  import { createDetectionRateTimeFormatter } from './detectionRateTime';
 
   interface Props {
     data: HourlyCount[];
@@ -12,6 +13,7 @@
   }
 
   let { data = [], color = '#f59e0b', width = 280, height = 80 }: Props = $props();
+  const formatTooltipTime = createDetectionRateTimeFormatter();
 
   const margin = { top: 4, right: 0, bottom: 16, left: 0 };
 
@@ -25,6 +27,7 @@
           h: number;
           count: number;
           label: string;
+          tooltipTime: string;
         }[],
         innerW: 0,
         innerH: 0,
@@ -50,6 +53,7 @@
         h: innerH - yScale(d.count),
         count: d.count,
         label: `${hour.getHours()}`,
+        tooltipTime: formatTooltipTime(d.hour),
       };
     });
 
@@ -74,7 +78,7 @@
     {#each chartData.bars as bar, i (i)}
       <rect x={bar.x} y={bar.y} width={bar.w} height={bar.h} fill={color} opacity="0.7" rx="1">
         <title
-          >{t('system.database.dashboard.detectionRate.detectionsTooltip', {
+          >{bar.tooltipTime} · {t('system.database.dashboard.detectionRate.detectionsTooltip', {
             count: bar.count,
           })}</title
         >

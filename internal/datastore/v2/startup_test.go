@@ -17,6 +17,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tphakala/birdnet-go/internal/conf"
@@ -45,6 +46,25 @@ func TestCheckMigrationState_FreshInstall_SQLite(t *testing.T) {
 	assert.False(t, state.LegacyRequired, "should not require legacy")
 	assert.False(t, state.V2Available, "v2 should not be available")
 	assert.NoError(t, state.Error)
+}
+
+func TestPostgresMarkerReadStartupState(t *testing.T) {
+	missing := postgresMarkerReadStartupState(gorm.ErrRecordNotFound)
+	require.ErrorIs(t, missing.Error, ErrV2DatabaseCorrupted)
+	require.ErrorContains(t, missing.Error, "output.postgresql.database")
+
+	const private = "user secret_user client 192.0.2.7 password secret_pw"
+	denied := postgresMarkerReadStartupState(&pgconn.PgError{Code: "42501", Message: private, Detail: private})
+	require.ErrorIs(t, denied.Error, ErrStartupStateUnknown)
+	require.NotErrorIs(t, denied.Error, ErrV2DatabaseCorrupted)
+	require.ErrorContains(t, denied.Error, "SQLSTATE 42501")
+	require.ErrorContains(t, denied.Error, "schema privileges")
+	assert.NotContains(t, denied.Error.Error(), private)
+
+	unavailable := postgresMarkerReadStartupState(fmt.Errorf("dial tcp 192.0.2.7:5432: connect: connection refused"))
+	require.ErrorIs(t, unavailable.Error, ErrStartupStateUnknown)
+	assert.True(t, errors.IsConnectivityError(unavailable.Error), "connection failures must remain retryable")
+	assert.NotContains(t, unavailable.Error.Error(), "192.0.2.7")
 }
 
 func TestCheckMigrationState_FreshInstall_CustomPath(t *testing.T) {

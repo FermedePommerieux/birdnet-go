@@ -9,14 +9,13 @@ import (
 	"github.com/tphakala/birdnet-go/internal/health"
 )
 
-// DatabaseSizeProbe reads the size in bytes of the MySQL or MariaDB schema in
-// use. applicable is false when the database is not MySQL or MariaDB, and the
-// check then measures the SQLite file instead. Any non-nil err makes the check
-// report unknown, whatever applicable says.
+// DatabaseSizeProbe reads the size in bytes of the active server database.
+// applicable is false for SQLite, when the check measures the local file
+// instead. Any non-nil err makes the check report unknown.
 type DatabaseSizeProbe func(ctx context.Context) (sizeBytes int64, applicable bool, err error)
 
-// DatabaseSizeCheck reports the size of the database (the SQLite file, or the
-// MySQL or MariaDB schema) and warns when a SQLite file is large.
+// DatabaseSizeCheck reports the size of the SQLite file, MySQL schema, or
+// PostgreSQL database and warns when a SQLite file is large.
 type DatabaseSizeCheck struct {
 	getDBPath  func() string
 	serverSize DatabaseSizeProbe
@@ -45,8 +44,8 @@ const (
 	databaseSizeReadErrorFormat = "Unable to read the database size: %v"
 )
 
-// Run reports the database size. On MySQL or MariaDB it reports the schema size
-// without a warning threshold; on SQLite it stats the file and warns above 1 GB.
+// Run reports the server database size without a warning threshold, or stats
+// the SQLite file and warns above 1 GB.
 func (c *DatabaseSizeCheck) Run(ctx context.Context) health.Result {
 	start := time.Now()
 

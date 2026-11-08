@@ -39,9 +39,17 @@ func TestPostgreSQLInspector(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, details.PostgreSQL)
 	assert.NotEmpty(t, details.PostgreSQL.EngineVersion)
-	assert.Positive(t, details.PostgreSQL.DatabaseSizeBytes)
+	var actualSize int64
+	require.NoError(t, mgr.DB().Raw("SELECT pg_database_size(current_database())").Scan(&actualSize).Error)
+	require.Positive(t, actualSize)
+	assert.Equal(t, actualSize, details.PostgreSQL.DatabaseSizeBytes)
 	assert.Nil(t, details.SQLite)
 	assert.Nil(t, details.MySQL)
+
+	stats, err := ds.GetDatabaseStats(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, v2.DialectPostgres, stats.Type)
+	assert.Equal(t, actualSize, stats.SizeBytes)
 
 	tables, err := ds.GetTableStats()
 	require.NoError(t, err)

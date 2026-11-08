@@ -39,6 +39,10 @@ SELECT current_setting('server_version'), current_setting('server_version_num'),
 
 In **System → Health**, run diagnostics to see **Database Server Version** and **Database Character Set**. The startup log and the notification bell also show the server version and both encodings. The running service refreshes the bell status after a server change. If startup is refused, the service log remains available even though the web interface cannot start.
 
+The **Database Size** diagnostic and the database dashboard report the occupied bytes of the connected PostgreSQL database, including its indexes. The dashboard groups detections by UTC hour and shows each hour in the browser’s time zone. Hover over a bar to see its date, local time and UTC offset, including during a clock change.
+
+If the database cannot open at startup, the error identifies the relevant `output.postgresql` setting. For authentication failures, check `username`, `password` and the server’s authentication rules. For a missing database, check `database`. For a permissions error, check the configured role’s grants on the database, schema and existing tables.
+
 ## History and backups
 
 Selecting an empty PostgreSQL database starts a new history. This fork has no SQLite-to-PostgreSQL transfer tool. The existing legacy-to-v2 migration operates within SQLite or MySQL/MariaDB, and `tools/dbexport` targets MySQL from legacy SQLite. Keep the original database and its backups when evaluating the new backend. Use PostgreSQL tools such as `pg_dump` and `pg_restore` for PostgreSQL backups. The in-app database download and Database Doctor operate on SQLite files.

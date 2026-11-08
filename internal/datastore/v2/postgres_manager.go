@@ -2,6 +2,7 @@ package v2
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql/driver"
 	"fmt"
 	"net"
@@ -72,14 +73,37 @@ func postgresSafeError(err error) error {
 		if len(code) == postgresSQLStateLength && strings.IndexFunc(code, func(r rune) bool {
 			return r < '0' || r > 'Z' || (r > '9' && r < 'A')
 		}) == -1 {
-			return fmt.Errorf("PostgreSQL server error (SQLSTATE %s)", code)
+			return fmt.Errorf("PostgreSQL server error (SQLSTATE %s): %s", code, postgresSQLStateHint(code))
 		}
 		return errors.NewStd("PostgreSQL server error")
 	}
-	if safe := postgresSafeConnectivityError(err); safe != nil {
-		return fmt.Errorf("PostgreSQL connection failed: %w", safe)
+	if _, ok := errors.AsType[*tls.CertificateVerificationError](err); ok {
+		return errors.NewStd("PostgreSQL TLS certificate verification failed; check output.postgresql.host and output.postgresql.sslrootcert")
 	}
-	return errors.NewStd("PostgreSQL connection failed; check database settings and server availability")
+	if _, ok := errors.AsType[*pgconn.ParseConfigError](err); ok {
+		return errors.NewStd("invalid PostgreSQL connection configuration; check output.postgresql settings, including sslmode, sslrootcert, sslcert and sslkey")
+	}
+	if safe := postgresSafeConnectivityError(err); safe != nil {
+		return fmt.Errorf("PostgreSQL connection failed: %w; check output.postgresql.host, output.postgresql.port, output.postgresql.sslmode and server availability", safe)
+	}
+	return errors.NewStd("PostgreSQL connection failed; check output.postgresql.username, output.postgresql.password, output.postgresql.database, output.postgresql.host, output.postgresql.port, output.postgresql.sslmode and server availability")
+}
+
+// postgresSQLStateHint uses only the SQLSTATE code. PostgreSQL's message and
+// detail fields can include the login, client address, database name or DSN.
+func postgresSQLStateHint(code string) string {
+	switch code {
+	case "28P01", "28000":
+		return "check output.postgresql.username, output.postgresql.password (or BIRDNET_POSTGRESQL_PASSWORD) and the server authentication rules"
+	case "3D000":
+		return "check output.postgresql.database and that the database exists"
+	case "42501":
+		return "check database and schema privileges, including access to existing tables, for output.postgresql.username"
+	case "08001", "08006", "08004":
+		return "check output.postgresql.host, output.postgresql.port, output.postgresql.sslmode and server availability"
+	default:
+		return "check output.postgresql settings and PostgreSQL server access"
+	}
 }
 
 // postgresSafeConnectivityError retains only the verified failure category.
@@ -144,7 +168,24 @@ func NewPostgresManager(cfg *conf.PostgreSQLSettings) (*PostgresManager, error) 
 
 // Initialize creates and seeds the v2 schema. It is safe to call on every boot.
 func (m *PostgresManager) Initialize() error {
-	return m.db.Transaction(initializePostgresSchema)
+	var callbackErr error
+	err := m.db.Transaction(func(tx *gorm.DB) error {
+		callbackErr = initializePostgresSchema(tx)
+		return callbackErr
+	})
+	return postgresTransactionError(err, callbackErr)
+}
+
+// The callback returns only errors it has already sanitized or constructed.
+// A failed BEGIN or COMMIT bypasses it and can contain connection parameters.
+func postgresTransactionError(transactionErr, callbackErr error) error {
+	if callbackErr != nil {
+		return callbackErr
+	}
+	if transactionErr != nil {
+		return postgresSafeError(transactionErr)
+	}
+	return nil
 }
 
 func initializePostgresSchema(tx *gorm.DB) error {
