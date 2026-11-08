@@ -30,7 +30,7 @@ on:
         description: "Push to Docker Hub"
         required: false
         type: boolean
-        default: true
+        default: false
       cleanup-old-images:
         description: "Clean up old images"
         required: false
@@ -110,6 +110,9 @@ jobs:
           echo "version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Baking app version: ${APP_VERSION}"
 
+      - name: Set up QEMU for cross-platform images
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
@@ -122,8 +125,8 @@ jobs:
 
           # Docker Hub (extract just the repo name)
           REPO_NAME=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2)
-          echo "DOCKERHUB_REPO=tphakala/${REPO_NAME}" >> ${GITHUB_ENV}
-          echo "dockerhub-repo=tphakala/${REPO_NAME}" >> $GITHUB_OUTPUT
+          echo "DOCKERHUB_REPO=${GITHUB_REPOSITORY_OWNER,,}/${REPO_NAME}" >> ${GITHUB_ENV}
+          echo "dockerhub-repo=${GITHUB_REPOSITORY_OWNER,,}/${REPO_NAME}" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry
         if: inputs.push-to-ghcr
@@ -145,7 +148,7 @@ jobs:
         id: dockerhub-login
         run: |
           for attempt in 1 2 3; do
-            if echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u tphakala --password-stdin; then
+            if echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${GITHUB_REPOSITORY_OWNER,,}" --password-stdin; then
               echo "Docker Hub login succeeded"
               exit 0
             fi
@@ -375,7 +378,7 @@ jobs:
         run: |
           echo "GHCR_REPO=ghcr.io/${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
           REPO_NAME=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2)
-          echo "DOCKERHUB_REPO=tphakala/${REPO_NAME}" >> ${GITHUB_ENV}
+          echo "DOCKERHUB_REPO=${GITHUB_REPOSITORY_OWNER,,}/${REPO_NAME}" >> ${GITHUB_ENV}
 
       # This job does not check out the repo, so it cannot use the shared
       # ./.github/actions/setup-apt-packages composite; the continue-on-error +
@@ -519,7 +522,7 @@ jobs:
         run: |
           echo "GHCR_REPO=ghcr.io/${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
           REPO_NAME=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2)
-          echo "DOCKERHUB_REPO=tphakala/${REPO_NAME}" >> ${GITHUB_ENV}
+          echo "DOCKERHUB_REPO=${GITHUB_REPOSITORY_OWNER,,}/${REPO_NAME}" >> ${GITHUB_ENV}
 
       - name: Cleanup old GHCR images
         if: inputs.push-to-ghcr && inputs.tag-strategy == 'nightly'

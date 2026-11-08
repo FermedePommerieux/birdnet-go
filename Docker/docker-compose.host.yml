@@ -18,9 +18,9 @@
 # doc/wiki/docker_compose_guide.md (Switching an existing install).
 services:
   birdnet-go:
-    # :nightly tracks main, :latest is the latest stable release.
+    # :latest tracks the stable fork release; pin a release tag to control updates.
     # Pin a release tag (for example :v1.2.3) to control when updates happen.
-    image: ghcr.io/tphakala/birdnet-go:nightly
+    image: ${BIRDNET_GO_IMAGE:-ghcr.io/fermedepommerieux/birdnet-go:latest}
     container_name: birdnet-go
     restart: unless-stopped
     # Host networking: no ports: section, published ports are ignored in this mode.

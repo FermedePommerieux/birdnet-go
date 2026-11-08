@@ -114,7 +114,7 @@ ARG SENTRY_DSN
 ENV SENTRY_DSN=${SENTRY_DSN:-}
 
 # Project identity baked into the binary at link time (consumed by the Taskfile
-# PROJECT_* vars). Empty by default so builds use the upstream defaults in
+# PROJECT_* vars). Empty by default so builds use the fork defaults in
 # internal/branding; forks pass --build-arg PROJECT_NAME / PROJECT_REPO_URL /
 # PROJECT_COMMUNITY_URL to rebrand. Self-hosters can instead override at runtime
 # with the BIRDNET_GO_PROJECT_* environment variables.

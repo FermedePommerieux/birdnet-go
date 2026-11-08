@@ -20,7 +20,7 @@ EOF
 
 # Default version (will be set by parse_arguments function)
 BIRDNET_GO_VERSION="latest"
-BIRDNET_GO_IMAGE=""
+BIRDNET_GO_IMAGE="${BIRDNET_GO_IMAGE:-}"
 
 # Silent mode for non-interactive installation (set via --silent flag)
 SILENT_MODE="false"
@@ -2115,6 +2115,24 @@ adopt_migrated_installation() {
     if grep -qiE '^[[:space:]]*type:[[:space:]]*mysql' "$dest/config/config.yaml" 2>/dev/null; then
         print_message "⚠️  Config references a MySQL database; only config and clips migrated, not the external DB." "$YELLOW"
     fi
+    if awk '
+        /^[[:space:]]*postgresql:[[:space:]]*(#.*)?$/ {
+            block_indent = match($0, /[^[:space:]]/) - 1
+            in_postgresql = 1
+            next
+        }
+        in_postgresql && $0 !~ /^[[:space:]]*(#.*)?$/ {
+            indent = match($0, /[^[:space:]]/) - 1
+            if (indent <= block_indent) {
+                in_postgresql = 0
+            } else if ($0 ~ /^[[:space:]]*enabled:[[:space:]]*true([[:space:]]*(#.*)?)?$/) {
+                found = 1
+            }
+        }
+        END { exit !found }
+    ' "$dest/config/config.yaml"; then
+        print_message "⚠️  Config references a PostgreSQL database; only config and clips migrated, not the external DB." "$YELLOW"
+    fi
 
     load_telemetry_config
     MIGRATION_DONE="true"
@@ -3478,9 +3496,9 @@ download_base_config() {
     
     # Download new config to temporary file first
     local temp_config="/tmp/config.yaml.new"
-    if ! curl -s --fail https://raw.githubusercontent.com/tphakala/birdnet-go/main/internal/conf/config.yaml > "$temp_config"; then
+    if ! curl -s --fail https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/internal/conf/config.yaml > "$temp_config"; then
         # Collect diagnostic information about the download failure
-        local curl_error=$(curl -v --fail https://raw.githubusercontent.com/tphakala/birdnet-go/main/internal/conf/config.yaml 2>&1 | tail -5 | tr '\n' ' ' | sed 's/"/\\"/g')
+        local curl_error=$(curl -v --fail https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/internal/conf/config.yaml 2>&1 | tail -5 | tr '\n' ' ' | sed 's/"/\\"/g')
         local dns_test="unknown"
         local http_test="unknown"
 
@@ -3500,7 +3518,7 @@ download_base_config() {
 
         local diagnostic_json=$(cat <<EOF
 {
-    "url": "https://raw.githubusercontent.com/tphakala/birdnet-go/main/internal/conf/config.yaml",
+    "url": "https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/internal/conf/config.yaml",
     "curl_error": "$(echo "$curl_error" | head -c 500)",
     "dns_resolution": "$dns_test",
     "http_connectivity": "$http_test",
@@ -6391,7 +6409,7 @@ start_birdnet_go() {
         print_message "1. Check port availability and permissions" "$YELLOW"
         print_message "2. Verify your audio device is properly connected and accessible" "$YELLOW"
         print_message "3. If the issue persists, please open a ticket at:" "$YELLOW"
-        print_message "   https://github.com/tphakala/birdnet-go/issues" "$GREEN"
+        print_message "   https://github.com/FermedePommerieux/birdnet-go/issues" "$GREEN"
         print_message "   Include the logs above in your issue report for faster troubleshooting" "$YELLOW"
 
         exit 1
@@ -6438,7 +6456,7 @@ start_birdnet_go() {
             print_message "\n❗ If you need help with this issue:" "$RED"
             print_message "1. The service started but then crashed" "$YELLOW"
             print_message "2. Please open a ticket at:" "$YELLOW"
-            print_message "   https://github.com/tphakala/birdnet-go/issues" "$GREEN"
+            print_message "   https://github.com/FermedePommerieux/birdnet-go/issues" "$GREEN"
             print_message "   Include the logs above in your issue report for faster troubleshooting" "$YELLOW"
             
             exit 1
@@ -6460,7 +6478,7 @@ start_birdnet_go() {
         print_message "\n❗ If you need help with this issue:" "$RED"
         print_message "1. The service started but container didn't initialize properly" "$YELLOW"
         print_message "2. Please open a ticket at:" "$YELLOW"
-        print_message "   https://github.com/tphakala/birdnet-go/issues" "$GREEN"
+        print_message "   https://github.com/FermedePommerieux/birdnet-go/issues" "$GREEN"
         print_message "   Include the logs above in your issue report for faster troubleshooting" "$YELLOW"
         
         exit 1
@@ -6710,7 +6728,7 @@ get_container_version() {
 # Function to show usage information
 show_usage() {
     echo "Usage: $0 [OPTIONS]"
-    echo "Install or update BirdNET-Go with configurable Docker image version"
+    echo "Install or update the FermedePommerieux BirdNET-Go fork"
     echo ""
     echo "OPTIONS:"
     echo "  -v, --version VERSION    Specify container image version (tag or hash)"
@@ -6723,6 +6741,7 @@ show_usage() {
     echo "  -h, --help              Show this help message"
     echo ""
     echo "SILENT MODE ENVIRONMENT VARIABLES:"
+    echo "  BIRDNET_GO_IMAGE        Full image reference override (unless --version is given)"
     echo "  BIRDNET_RTSP_URL        RTSP stream URL (if set, uses RTSP audio input)"
     echo "  BIRDNET_LATITUDE        Latitude for location (-90 to 90)"
     echo "  BIRDNET_LONGITUDE       Longitude for location (-180 to 180)"
@@ -6747,11 +6766,13 @@ show_usage() {
 
 # Function to parse command line arguments
 parse_arguments() {
+    local version_set="false"
     while [[ $# -gt 0 ]]; do
         case $1 in
             -v|--version)
                 if [ -n "$2" ] && [[ $2 != -* ]]; then
                     BIRDNET_GO_VERSION="$2"
+                    version_set="true"
                     shift 2
                 else
                     echo "❌ Error: --version requires a value" >&2
@@ -6804,10 +6825,12 @@ parse_arguments() {
     done
     
     # Set the Docker image URL after parsing arguments
-    BIRDNET_GO_IMAGE="ghcr.io/tphakala/birdnet-go:${BIRDNET_GO_VERSION}"
+    if [ "$version_set" = "true" ] || [ -z "$BIRDNET_GO_IMAGE" ]; then
+        BIRDNET_GO_IMAGE="ghcr.io/fermedepommerieux/birdnet-go:${BIRDNET_GO_VERSION}"
+    fi
     
     # Log the version being used
-    echo "🐳 Using BirdNET-Go version: $BIRDNET_GO_VERSION"
+    echo "🐳 Using BirdNET-Go image: $BIRDNET_GO_IMAGE"
 }
 
 # Parse command line arguments first
@@ -7568,7 +7591,8 @@ if [ "$SILENT_MODE" = "true" ] && [ "$MIGRATE_MODE" != "true" ] && { [ "$INSTALL
         if handle_container_update; then
             exit 0
         fi
-        print_message "⚠️ Update failed, proceeding with fresh installation" "$YELLOW"
+        print_message "❌ Update failed; existing configuration and data were not reinstalled" "$RED"
+        exit 1
     fi
     # After migration, preserve the migrated config by skipping fresh-install overwrite
     if [ "$MIGRATION_DONE" = "true" ]; then

@@ -33,7 +33,7 @@ func main() {
 	output := flag.String("output", "manifest.json", "path to write the manifest JSON to")
 	apiURL := flag.String("api-url", "https://api.github.com", "GitHub REST API base URL")
 	ghcrImage := flag.String("ghcr-image", "", "GHCR image repository (without tag); defaults to ghcr.io/<repo>")
-	dockerHubImage := flag.String("dockerhub-image", "", "Docker Hub image repository (without tag); defaults to <repo>")
+	dockerHubImage := flag.String("dockerhub-image", "", "Docker Hub image repository (without tag); defaults to <repo>; use - to omit")
 	maxNotesLen := flag.Int("max-notes-len", 50000, "maximum release-notes length in bytes; 0 for unbounded")
 	flag.Parse()
 
@@ -55,7 +55,10 @@ func run(repo, output, apiURL, ghcrImage, dockerHubImage string, maxNotesLen int
 	if ghcrImage == "" {
 		ghcrImage = "ghcr.io/" + strings.ToLower(repo)
 	}
-	if dockerHubImage == "" {
+	switch dockerHubImage {
+	case "-":
+		dockerHubImage = ""
+	case "":
 		dockerHubImage = strings.ToLower(repo)
 	}
 

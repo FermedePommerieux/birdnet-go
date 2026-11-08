@@ -1,6 +1,8 @@
 # PostgreSQL (v2 storage)
 
-This fork supports stable PostgreSQL 17.x and 18.x with UTF8 database and client encodings. SQLite remains the default.
+The [Ferme de Pommerieux fork](https://github.com/FermedePommerieux/birdnet-go) supports stable PostgreSQL 17.x and 18.x with UTF8 database and client encodings. PostgreSQL is a fork feature; [upstream BirdNET-Go](https://github.com/tphakala/birdnet-go) images and releases do not include it. We use this backend in our production deployment and maintain its fork-specific code and tests while following upstream changes. That experience does not establish compatibility with every PostgreSQL installation or promise a support response time. SQLite remains the default, and MySQL/MariaDB is still a separate choice.
+
+Install a [published release of this fork](https://github.com/FermedePommerieux/birdnet-go/releases) before enabling PostgreSQL. Container deployments should use `ghcr.io/fermedepommerieux/birdnet-go:latest` once the fork image is published, or pin a published release tag such as `20261108`. The fork installer selects `latest` by default. The upstream installer, image and release pages do not install this fork's PostgreSQL implementation.
 
 ## Configure a database
 
@@ -45,7 +47,7 @@ If the database cannot open at startup, the error identifies the relevant `outpu
 
 ## History and backups
 
-Selecting an empty PostgreSQL database starts a new history. This fork has no SQLite-to-PostgreSQL transfer tool. The existing legacy-to-v2 migration operates within SQLite or MySQL/MariaDB, and `tools/dbexport` targets MySQL from legacy SQLite. Keep the original database and its backups when evaluating the new backend. Use PostgreSQL tools such as `pg_dump` and `pg_restore` for PostgreSQL backups. The in-app database download and Database Doctor operate on SQLite files.
+Selecting an empty PostgreSQL database starts a new history. Changing the backend in Settings or running the installer does not transfer detections. This fork has no integrated SQLite-to-PostgreSQL or MySQL-to-PostgreSQL transfer tool. The existing legacy-to-v2 migration operates within SQLite or MySQL/MariaDB, and `tools/dbexport` targets MySQL from legacy SQLite. Keep the original database and its backups when evaluating the new backend. Use PostgreSQL tools such as `pg_dump` and `pg_restore` for PostgreSQL backups. The in-app database download and Database Doctor operate on SQLite files.
 
 ## Reproduce the tests
 

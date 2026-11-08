@@ -43,6 +43,8 @@ Use the `podman-install.sh` script in the repository root to install BirdNET-Go 
 bash podman-install.sh
 ```
 
+The fork installer selects `ghcr.io/fermedepommerieux/birdnet-go:podman-latest` by default. Use it after the first fork release publishes this tag; it is separate from the upstream image.
+
 The script will:
 
 1. Check system compatibility (requires Debian 13+, Ubuntu 25.04+, or compatible)
@@ -63,7 +65,7 @@ podman run -d --name birdnet-go \
   --device /dev/snd \
   -p 8080:8080 \
   -v ./config:/config -v ./data:/data \
-  ghcr.io/tphakala/birdnet-go:nightly
+  ghcr.io/fermedepommerieux/birdnet-go:podman-latest
 ```
 
 Note that `--group-add keep-groups` on its own is not enough with the default configuration: the entrypoint drops privileges with `gosu`, which clears the inherited `audio` group, so the sound card becomes inaccessible after the drop. Adding `--userns=keep-id` (as above) avoids the privilege drop and is the reliable recipe.

@@ -189,7 +189,7 @@ jobs:
       create-latest-tag: true
       platforms: '["linux/amd64", "linux/arm64"]'
       push-to-ghcr: true
-      push-to-dockerhub: true
+      push-to-dockerhub: false
       cleanup-old-images: false
       keep-images-count: 14
     secrets: inherit

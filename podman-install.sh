@@ -21,8 +21,8 @@ EOF
 
 
 # Default version (will be set by parse_arguments function)
-BIRDNET_GO_VERSION="podman-nightly"
-BIRDNET_GO_IMAGE=""
+BIRDNET_GO_VERSION="podman-latest"
+BIRDNET_GO_IMAGE="${BIRDNET_GO_IMAGE:-}"
 
 # Logging configuration
 LOG_DIR="$HOME/birdnet-go-app/data/logs"
@@ -859,15 +859,16 @@ show_usage() {
     echo ""
     echo "OPTIONS:"
     echo "  -v, --version VERSION    Specify container image version (tag)"
-    echo "                          Default: podman-nightly"
+    echo "                          Default: podman-latest"
     echo "                          Examples: podman-latest, podman-v1.2.3, podman-nightly"
     echo "  -h, --help              Show this help message"
     echo ""
     echo "EXAMPLES:"
-    echo "  $0                           # Install using podman-nightly version (default)"
+    echo "  $0                           # Install using podman-latest version (default)"
     echo "  $0 -v podman-latest         # Install using latest stable Podman-optimized version"
     echo "  $0 -v podman-v1.2.3         # Install specific Podman-optimized version tag"
     echo "  $0 --version podman-nightly # Explicitly use nightly Podman version"
+    echo "  BIRDNET_GO_IMAGE=ghcr.io/fermedepommerieux/birdnet-go:podman-latest $0 # Override image"
     echo ""
     echo "SYSTEM REQUIREMENTS:"
     echo "  • Debian 13 (Trixie) or newer"
@@ -887,11 +888,13 @@ show_usage() {
 
 # Function to parse command line arguments
 parse_arguments() {
+    local version_set="false"
     while [[ $# -gt 0 ]]; do
         case $1 in
             -v|--version)
                 if [ -n "$2" ] && [[ $2 != -* ]]; then
                     BIRDNET_GO_VERSION="$2"
+                    version_set="true"
                     shift 2
                 else
                     echo "❌ Error: --version requires a value" >&2
@@ -926,7 +929,9 @@ parse_arguments() {
     fi
     
     # Set the container image URL after parsing arguments
-    BIRDNET_GO_IMAGE="ghcr.io/tphakala/birdnet-go:${BIRDNET_GO_VERSION}"
+    if [ "$version_set" = "true" ] || [ -z "$BIRDNET_GO_IMAGE" ]; then
+        BIRDNET_GO_IMAGE="ghcr.io/fermedepommerieux/birdnet-go:${BIRDNET_GO_VERSION}"
+    fi
     
     # Log the version being used
     echo "📦 Using BirdNET-Go Podman version: $BIRDNET_GO_VERSION"
@@ -1817,7 +1822,7 @@ EOF
         cp "$quadlet_source" "$quadlet_target"
         
         # Update image reference
-        sed -i "s|ghcr.io/tphakala/birdnet-go:nightly|${BIRDNET_GO_IMAGE}|g" "$quadlet_target"
+        sed -i "s|ghcr.io/fermedepommerieux/birdnet-go:podman-latest|${BIRDNET_GO_IMAGE}|g" "$quadlet_target"
         
         # Update timezone if configured
         if [ -n "$CONFIGURED_TZ" ]; then

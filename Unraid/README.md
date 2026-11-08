@@ -24,7 +24,7 @@ BirdNET-Go is a real-time bird species identification system that uses deep lear
 
 ## Installation via Unraid Community Applications
 
-Both methods below install the bridge networking template, which remains supported. For new installs, the [host networking template](#host-networking-template-recommended-for-new-installs) is recommended (best effort, untested on real Unraid).
+Both methods below install the upstream bridge networking template, which does not include this fork's PostgreSQL support. For this fork, use the [host networking template](#host-networking-template-recommended-for-new-installs) (best effort, untested on real Unraid).
 
 ### Method 1: Through Community Applications
 
@@ -56,7 +56,7 @@ If BirdNET-Go is not yet available in Community Applications:
 
 ## Host Networking Template (Recommended for New Installs)
 
-`birdnet-go-host.xml` in this directory is a second template that runs the container with host networking. It is recommended for new installs, because multicast (mDNS) then reaches the app directly. The existing bridge template (`birdnet-go.xml`) and the Community Applications listing are not changed, and existing containers keep working as they are.
+`birdnet-go-host.xml` in this directory is this fork's template. It uses `ghcr.io/fermedepommerieux/birdnet-go:latest` with host networking, so multicast (mDNS) reaches the app directly. The existing upstream bridge template (`birdnet-go.xml`) and the Community Applications listing are not changed, and existing containers keep working as they are.
 
 **Support status: best effort, untested on real Unraid.** No Unraid system was available to test this template. The sections below separate what is verified from what is only expected.
 
@@ -92,7 +92,7 @@ Expected, but not verified on Unraid:
 
 This repository's template is not what Community Applications serves. To use it:
 
-1. Download `https://raw.githubusercontent.com/tphakala/birdnet-go/main/Unraid/birdnet-go-host.xml` and place it in the dockerMan user template folder on the flash drive. The folder is expected to be `/boot/config/plugins/dockerMan/templates-user/` (not verified; check that your existing templates are stored there). Choose a file name that does not overwrite a template you want to keep.
+1. Download `https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/Unraid/birdnet-go-host.xml` and place it in the dockerMan user template folder on the flash drive. The folder is expected to be `/boot/config/plugins/dockerMan/templates-user/` (not verified; check that your existing templates are stored there). Choose a file name that does not overwrite a template you want to keep.
 2. In the **Docker** tab choose **Add Container** and select the template from the template list.
 3. Check the paths and the WebUI Port, then click **Apply**.
 4. Open the port in your firewall if you use one on the server.
@@ -246,7 +246,7 @@ Configure security in the web interface under **Settings** → **Security**.
 
 1. **Check Logs**: View container logs in Unraid Docker tab
 2. **Community Support**: Visit [BirdNET-Go Discussions](https://github.com/tphakala/birdnet-go/discussions)
-3. **Report Issues**: [GitHub Issues](https://github.com/tphakala/birdnet-go/issues)
+3. **Report issues with this fork**: [Fork GitHub Issues](https://github.com/FermedePommerieux/birdnet-go/issues)
 4. **Unraid Forums**: Post in the Unraid Community Applications section
 
 ## Integration Examples
@@ -284,7 +284,7 @@ Set up notifications for rare bird species or high-confidence detections.
 
 1. Go to **Docker** tab
 2. Click **Force Update** on the BirdNET-Go container
-3. The container will download the latest nightly image
+3. The host template downloads this fork's latest release image; the upstream bridge template downloads its nightly image.
 
 ## Backup and Restore
 

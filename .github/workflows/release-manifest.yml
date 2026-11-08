@@ -49,6 +49,7 @@ jobs:
         run: |
           go run ./tools/release-manifest \
             -repo "${{ github.repository }}" \
+            -dockerhub-image=- \
             -output manifest.json
           # The generator skips writing the file when no release matches a
           # channel (e.g. a fresh fork); treat that as a no-op, not a failure.

@@ -1,19 +1,19 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>birdnet-go</Name>
-  <Repository>ghcr.io/tphakala/birdnet-go:nightly</Repository>
-  <Registry>https://github.com/tphakala/birdnet-go/pkgs/container/birdnet-go</Registry>
+  <Repository>ghcr.io/fermedepommerieux/birdnet-go:latest</Repository>
+  <Registry>https://github.com/FermedePommerieux/birdnet-go/pkgs/container/birdnet-go</Registry>
   <Network>host</Network>
   <MyIP/>
   <Shell>bash</Shell>
   <Privileged>false</Privileged>
-  <Support>https://github.com/tphakala/birdnet-go/discussions</Support>
-  <Project>https://github.com/tphakala/birdnet-go</Project>
+  <Support>https://github.com/FermedePommerieux/birdnet-go/issues</Support>
+  <Project>https://github.com/FermedePommerieux/birdnet-go</Project>
   <Overview>Real-time bird species identification from audio using BirdNET deep learning models. BirdNET-Go captures and analyzes live audio from your microphone or RTSP streams, providing instant bird species identification with confidence scores. Features a web dashboard with spectrograms, audio clips, species filtering, and comprehensive detection statistics. This template uses host networking, which is recommended for new installs: multicast (mDNS) reaches the app directly. The web interface listens on the WebUI Port setting (default 8080); use 1024 or higher.</Overview>
   <Category>Tools: MediaApp:Music MediaApp:Video</Category>
   <WebUI>http://[IP]:[PORT:8080]/</WebUI>
-  <TemplateURL>https://raw.githubusercontent.com/tphakala/birdnet-go/main/Unraid/birdnet-go-host.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/tphakala/birdnet-go/main/doc/BirdNET-Go-logo.webp</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/Unraid/birdnet-go-host.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/doc/BirdNET-Go-logo.webp</Icon>
   <ExtraParams>--add-host="host.docker.internal:host-gateway" --security-opt no-new-privileges=true --cap-drop NET_RAW --stop-timeout 20</ExtraParams>
   <PostArgs/>
   <CPUset/>

@@ -42,15 +42,15 @@ func resetBrandingState(t *testing.T) {
 func TestDefaults(t *testing.T) {
 	resetBrandingState(t)
 	// With no environment overrides and empty (un-baked) ldflags vars, the
-	// getters fall back to the built-in upstream defaults.
-	assert.Equal(t, "BirdNET-Go", Name())
-	assert.Equal(t, "https://github.com/tphakala/birdnet-go", RepoURL())
-	assert.Equal(t, "https://github.com/tphakala/birdnet-go/issues", IssuesURL())
-	assert.Equal(t, "https://github.com/tphakala/birdnet-go/issues/new", NewIssueURL())
-	assert.Equal(t, "https://github.com/tphakala/birdnet-go", SupportURL())
-	assert.Equal(t, "https://github.com/tphakala/birdnet-go/discussions", DiscussionsURL())
-	assert.Equal(t, "https://github.com/tphakala/birdnet-go/releases", ReleasesURL())
-	assert.Equal(t, "https://discord.gg/gcSCFGUtsd", CommunityURL())
+	// getters fall back to the built-in fork defaults.
+	assert.Equal(t, "BirdNET-Go PostgreSQL", Name())
+	assert.Equal(t, "https://github.com/FermedePommerieux/birdnet-go", RepoURL())
+	assert.Equal(t, "https://github.com/FermedePommerieux/birdnet-go/issues", IssuesURL())
+	assert.Equal(t, "https://github.com/FermedePommerieux/birdnet-go/issues/new", NewIssueURL())
+	assert.Equal(t, "https://github.com/FermedePommerieux/birdnet-go", SupportURL())
+	assert.Equal(t, "https://github.com/FermedePommerieux/birdnet-go/discussions", DiscussionsURL())
+	assert.Equal(t, "https://github.com/FermedePommerieux/birdnet-go/releases", ReleasesURL())
+	assert.Equal(t, "https://github.com/FermedePommerieux/birdnet-go/discussions", CommunityURL())
 }
 
 func TestEnvOverride(t *testing.T) {
@@ -106,8 +106,8 @@ func TestWhitespaceCountsAsUnset(t *testing.T) {
 	t.Setenv(envRepoURL, "   ")
 	t.Setenv(envName, "\t")
 
-	assert.Equal(t, "https://github.com/tphakala/birdnet-go", RepoURL())
-	assert.Equal(t, "BirdNET-Go", Name())
+	assert.Equal(t, "https://github.com/FermedePommerieux/birdnet-go", RepoURL())
+	assert.Equal(t, "BirdNET-Go PostgreSQL", Name())
 }
 
 func TestLdflagsVarPrecedence(t *testing.T) {

@@ -227,6 +227,80 @@ fresh_config() { # -> path to a fresh copy of the template
     printf '%s' "$p"
 }
 
+# The fork installer must select its own published image while keeping an
+# explicit image override usable for existing custom deployments.
+it "fork installer image selection"
+load_fn parse_arguments
+BIRDNET_GO_VERSION="latest"; BIRDNET_GO_IMAGE=""
+parse_arguments >/dev/null
+assert_eq "Docker defaults to fork latest" "ghcr.io/fermedepommerieux/birdnet-go:latest" "$BIRDNET_GO_IMAGE"
+BIRDNET_GO_VERSION="latest"; BIRDNET_GO_IMAGE="ghcr.io/tphakala/birdnet-go:nightly"
+parse_arguments >/dev/null
+assert_eq "Docker preserves an image environment override" "ghcr.io/tphakala/birdnet-go:nightly" "$BIRDNET_GO_IMAGE"
+parse_arguments --version nightly >/dev/null
+assert_eq "Docker command-line version wins over environment" "ghcr.io/fermedepommerieux/birdnet-go:nightly" "$BIRDNET_GO_IMAGE"
+
+load_fn parse_arguments "$PODMAN_INSTALL_SH"
+BIRDNET_GO_VERSION="podman-latest"; BIRDNET_GO_IMAGE=""
+parse_arguments >/dev/null
+assert_eq "Podman defaults to fork podman-latest" "ghcr.io/fermedepommerieux/birdnet-go:podman-latest" "$BIRDNET_GO_IMAGE"
+BIRDNET_GO_IMAGE="ghcr.io/tphakala/birdnet-go:podman-nightly"
+parse_arguments >/dev/null
+assert_eq "Podman preserves an image environment override" "ghcr.io/tphakala/birdnet-go:podman-nightly" "$BIRDNET_GO_IMAGE"
+parse_arguments --version podman-nightly >/dev/null
+assert_eq "Podman command-line version wins over environment" "ghcr.io/fermedepommerieux/birdnet-go:podman-nightly" "$BIRDNET_GO_IMAGE"
+
+it "fork installer preserves existing configuration"
+load_fn download_base_config
+CONFIG_FILE="$(fresh_config)"; FRESH_INSTALL="false"
+cp "$CONFIG_FILE" "${WORK}/config-before.yaml"
+download_base_config
+cmp -s "$CONFIG_FILE" "${WORK}/config-before.yaml"
+assert_ok "existing config unchanged without fresh-install choice" $?
+assert_eq "fork template comes from fork main" "3" "$(grep -cF 'https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/internal/conf/config.yaml' "$INSTALL_SH")"
+assert_eq "PostgreSQL stays disabled by default" "false" "$(awk '/^  postgresql:/{getline; print $2; exit}' "$CONFIG_TEMPLATE")"
+
+it "cross-host PostgreSQL adoption leaves external history in place"
+load_fn adopt_migrated_installation
+pg_dest="${WORK}/pg-home/birdnet-go-app"
+mkdir -p "$pg_dest/config" "$pg_dest/data"
+cat > "$pg_dest/config/config.yaml" <<'EOF'
+output:
+  sqlite:
+    enabled: false
+  postgresql:
+    username: birdnet
+    enabled: true # selected by the user
+EOF
+printf 'existing history stays here\n' > "$pg_dest/data/history-marker"
+cp "$pg_dest/config/config.yaml" "${WORK}/pg-config-before.yaml"
+pg_output="$(
+    (
+    HOME="${WORK}/pg-home"
+    TMPDIR="$WORK"
+    MIGRATE_DEST="old-host"
+    MIGRATE_REMOTE_HOME="/home/old-user"
+    MIGRATE_TMP_UNIT=""
+    WEB_PORT=""
+    CONFIGURED_TZ=""
+    rewrite_migrated_config_paths() { :; }
+    migrate_ssh() { return 1; }
+    load_telemetry_config() { :; }
+    print_message() { printf '%s\n' "$1"; }
+    adopt_migrated_installation
+    )
+)"
+assert_ok "PostgreSQL adoption completes without copying the external DB" $?
+assert_eq "PostgreSQL external database is explicitly excluded" "1" "$(printf '%s\n' "$pg_output" | grep -c 'PostgreSQL database; only config and clips migrated, not the external DB')"
+cmp -s "$pg_dest/config/config.yaml" "${WORK}/pg-config-before.yaml"
+assert_ok "adoption preserves the PostgreSQL config" $?
+assert_eq "adoption preserves local data" "existing history stays here" "$(cat "$pg_dest/data/history-marker")"
+if [ "${INSTALL_TEST_FORK_ONLY:-false}" = "true" ]; then
+    printf 'fork installer tests: %s passed, %s failed\n' "$PASS" "$FAIL"
+    [ "$FAIL" -eq 0 ]
+    exit $?
+fi
+
 # yaml_scalar FILE INDENT PARENT_REGEX KEY -> value of the first KEY at INDENT spaces after
 # PARENT_REGEX matches. Used to read back what the helpers wrote.
 yaml_after() { # file parent_regex indent key

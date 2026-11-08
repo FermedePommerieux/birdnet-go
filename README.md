@@ -5,8 +5,8 @@
 </p>
 <p align="center">
   <!-- Project Status -->
-  <a href="https://github.com/tphakala/birdnet-go/releases">
-    <img src="https://img.shields.io/github/v/release/tphakala/birdnet-go?include_prereleases&style=flat-square&color=blue">
+  <a href="https://github.com/FermedePommerieux/birdnet-go/releases">
+    <img src="https://img.shields.io/github/v/release/FermedePommerieux/birdnet-go?include_prereleases&style=flat-square&color=blue">
   </a>
   <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
     <img src="https://badgen.net/badge/License/CC-BY-NC-SA%204.0/green">
@@ -19,34 +19,27 @@
   <a href="https://golang.org">
     <img src="https://img.shields.io/badge/Built%20with-Go-teal?style=flat-square&logo=go">
   </a>
-  <a href="https://scorecard.dev/viewer/?uri=github.com/tphakala/birdnet-go">
-    <img src="https://img.shields.io/ossf-scorecard/github.com/tphakala/birdnet-go?label=OpenSSF%20Scorecard&style=flat-square">
-  </a>
-
   <br>
 
-  <!-- Community -->
-  <a href="https://github.com/tphakala/birdnet-go/network/members">
-    <img src="https://img.shields.io/github/forks/tphakala/birdnet-go?style=flat-square&color=purple">
-  <a href="https://github.com/tphakala/birdnet-go/graphs/contributors">
-    <img src="https://img.shields.io/github/contributors/tphakala/birdnet-go?style=flat-square&color=orange">
-  </a>
-  </a>
-  <a href="https://github.com/tphakala/birdnet-go/issues">
-    <img src="https://img.shields.io/github/issues/tphakala/birdnet-go?style=flat-square&color=red">
+  <!-- Fork activity -->
+  <a href="https://github.com/FermedePommerieux/birdnet-go/issues">
+    <img src="https://img.shields.io/github/issues/FermedePommerieux/birdnet-go?style=flat-square&color=red">
   </a>
   <a href="https://discord.gg/gcSCFGUtsd">
     <img src="https://img.shields.io/discord/1416220486433767436?style=flat-square&logo=discord&color=5865F2&label=Discord">
   </a>
 
-  <a href="https://coderabbit.ai">
-    <img src="https://img.shields.io/coderabbit/prs/github/tphakala/birdnet-go?utm_source=oss&utm_medium=github&utm_campaign=tphakala%2Fbirdnet-go&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews">
-  </a>
 </p>
 
 **Realtime soundscape analyser for birds, wildlife, and bats.**
 
 Self-hosted, 24/7, local AI inference. BirdNET-Go ingests soundcard input or network audio streams, runs multi-model classification, and presents detections in a fast web UI. Runs on a Raspberry Pi.
+
+## About this fork
+
+This is the [Ferme de Pommerieux fork](https://github.com/FermedePommerieux/birdnet-go) of [tphakala/BirdNET-Go](https://github.com/tphakala/birdnet-go). We maintain it because our installation uses PostgreSQL for BirdNET-Go's v2 detection store. We use the PostgreSQL path in production, but our deployment is one environment, not a guarantee for every installation. SQLite remains the default; MySQL/MariaDB remains available. PostgreSQL is an explicit third choice in this fork and is not an upstream feature.
+
+We intend to follow upstream releases through automatically proposed updates, reviewed and tested before integration, while maintaining the PostgreSQL-specific code and tests here. This fork has its own [issues](https://github.com/FermedePommerieux/birdnet-go/issues) and [releases](https://github.com/FermedePommerieux/birdnet-go/releases); upstream release badges, images and installation commands do not describe this fork. See the [PostgreSQL guide](doc/wiki/postgresql.md) for tested versions, setup, and migration limits. For general BirdNET-Go features and upstream community support, see the [original project](https://github.com/tphakala/birdnet-go).
 
 ## Highlights
 
@@ -60,16 +53,16 @@ Self-hosted, 24/7, local AI inference. BirdNET-Go ingests soundcard input or net
 
 ## Quick install
 
-Debian, Ubuntu, and Raspberry Pi OS:
+For this fork on Debian, Ubuntu, or Raspberry Pi OS, use its installer and a [published fork release](https://github.com/FermedePommerieux/birdnet-go/releases):
 
 ```bash
-curl -fsSL https://github.com/tphakala/birdnet-go/raw/main/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/install.sh -o install.sh
 bash ./install.sh
 ```
 
-Docker Compose, Portainer, Unraid and plain `docker run` users should start from the host-network configurations described in the [installation guide](https://github.com/tphakala/birdnet-go/wiki/installation) (Portainer: the **BirdNET-Go (host network, recommended)** template or the stack file `Docker/docker-compose.host.yml`, see the [Docker Compose guide](https://github.com/tphakala/birdnet-go/wiki/docker_compose_guide); Unraid: the [Unraid README](Unraid/README.md)); the bridge configurations remain supported. The Unraid host template is untested on real Unraid.
+For containers, use the fork image `ghcr.io/fermedepommerieux/birdnet-go:latest` after its first release is published, or pin a published release tag such as `20261108`. The fork installer selects `latest` by default. The [host-network Compose file](Docker/docker-compose.host.yml) and [upstream installation guide](https://github.com/tphakala/birdnet-go/wiki/installation) describe the deployment layout; verify the image reference before deploying. Fork images target Linux `amd64` and `arm64`. Upstream images do not include this fork's PostgreSQL changes. The Unraid host template is untested on real Unraid.
 
-Docker images are published for `linux/amd64` and `linux/arm64`. Pre-built binaries for Linux, Windows, and macOS ship with each [release](https://github.com/tphakala/birdnet-go/releases). See the [installation guide](https://github.com/tphakala/birdnet-go/wiki/installation), [hardware recommendations](https://github.com/tphakala/birdnet-go/wiki/hardware), and [security guide](https://github.com/tphakala/birdnet-go/wiki/security) for details.
+Choose SQLite for a new local installation unless you need an external database. To use PostgreSQL 17 or 18, provision a UTF8 database and follow the [PostgreSQL configuration guide](doc/wiki/postgresql.md) before starting the fork. Switching the selected backend starts a separate history: the installer and settings screen do not copy SQLite or MySQL/MariaDB detections into PostgreSQL.
 
 ## Web Dashboard
 
@@ -125,7 +118,7 @@ Docker images are published for `linux/amd64` and `linux/arm64`. Pre-built binar
 - SQLite (default) or MySQL/MariaDB with retry-aware write paths for contention;
   only the tested LTS releases are supported (MySQL 8.4 and 9.7; MariaDB 10.11,
   11.4, 11.8 or 12.3), and MySQL Innovation releases are not supported
-- Experimental PostgreSQL support for the v2 datastore; see the
+- PostgreSQL 17 and 18 support for the v2 datastore in this fork; see the
   [PostgreSQL configuration and testing guide](doc/wiki/postgresql.md)
 - Automatic backups with real-time status polling
 - Format-aware audio clip export
@@ -158,7 +151,7 @@ Docker images are published for `linux/amd64` and `linux/arm64`. Pre-built binar
 - [ONNX Runtime installation](https://github.com/tphakala/birdnet-go/wiki/ONNX-Runtime-Installation)
 - [Detection pipeline](https://github.com/tphakala/birdnet-go/wiki/detection-pipeline)
 - [Database Doctor](https://github.com/tphakala/birdnet-go/wiki/Database-Doctor)
-- [PostgreSQL configuration and testing](doc/wiki/postgresql.md) (experimental)
+- [PostgreSQL configuration, limits and testing](doc/wiki/postgresql.md) (fork feature)
 - [Training a custom classifier](https://github.com/tphakala/birdnet-go/wiki/Training-a-Custom-Classifier)
 - [Cloudflare Tunnel](https://github.com/tphakala/birdnet-go/wiki/cloudflare_tunnel_guide)
 - [Security](https://github.com/tphakala/birdnet-go/wiki/security)
@@ -170,7 +163,7 @@ Docker images are published for `linux/amd64` and `linux/arm64`. Pre-built binar
 > See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 
 ```bash
-git clone https://github.com/tphakala/birdnet-go.git
+git clone https://github.com/FermedePommerieux/birdnet-go.git
 cd birdnet-go
 
 # Install Task (if not already installed)
@@ -251,7 +244,7 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International.
 
 ## Authors and acknowledgements
 
-Created and maintained by Tomi P. Hakala.
+BirdNET-Go was created and is maintained upstream by Tomi P. Hakala. The PostgreSQL fork is maintained by FermedePommerieux.
 
 A growing list of community contributors keeps the project moving forward. The current list lives on the [GitHub contributors page](https://github.com/tphakala/birdnet-go/graphs/contributors).
 

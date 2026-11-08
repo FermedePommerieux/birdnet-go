@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   scan:
+    if: github.repository == 'tphakala/birdnet-go' || vars.VIRUSTOTAL_ENABLED == 'true'
     name: Scan Release Assets
     runs-on: ubuntu-24.04
     steps:

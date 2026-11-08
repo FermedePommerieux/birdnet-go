@@ -21,6 +21,7 @@ jobs:
     # opened by the maintainer or the project bot, and comments by bots or the
     # maintainer.
     if: |
+      github.repository == 'tphakala/birdnet-go' &&
       github.event.issue.user.login != 'tphakala' &&
       github.event.issue.user.login != 'birdnet-go-bot' &&
       !contains(github.event.issue.user.type, 'Bot') &&

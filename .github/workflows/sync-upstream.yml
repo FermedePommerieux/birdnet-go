@@ -1,0 +1,168 @@
+name: Sync upstream main
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Check upstream once a day without creating a branch when it is unchanged.
+    - cron: '23 6 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: sync-upstream-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Propose upstream changes
+    # This workflow is only for the fork. A copied schedule on upstream must
+    # never try to synchronize the repository with itself.
+    if: github.repository == 'FermedePommerieux/birdnet-go'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out fork main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch upstream and prepare temporary branch
+        id: prepare
+        run: |
+          git remote add upstream https://github.com/tphakala/birdnet-go.git
+          git fetch --no-tags upstream main
+          git fetch --no-tags origin main
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git fetch --no-tags origin automation/upstream-main; then
+            git switch --force-create automation/upstream-main FETCH_HEAD
+          else
+            git switch --create automation/upstream-main origin/main
+          fi
+          echo "base=$(git rev-parse origin/main)" >> "$GITHUB_OUTPUT"
+          echo "upstream=$(git rev-parse upstream/main)" >> "$GITHUB_OUTPUT"
+
+      - name: Merge upstream main
+        id: merge
+        env:
+          BASE_SHA: ${{ steps.prepare.outputs.base }}
+          UPSTREAM_SHA: ${{ steps.prepare.outputs.upstream }}
+        run: |
+          changed=false
+          handle_merge_failure() {
+            if [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+              echo "Merge failed without file conflicts; stopping without pushing." >&2
+              exit 1
+            fi
+            git diff --name-only --diff-filter=U > "$RUNNER_TEMP/upstream-conflicts.txt"
+            git merge --abort
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          # Merge the latest fork main first so repeated runs advance the
+          # proposal branch monotonically and can use a normal, non-forced push.
+          if ! git merge-base --is-ancestor "$BASE_SHA" HEAD; then
+            if ! git merge --no-edit origin/main; then
+              handle_merge_failure
+            fi
+            changed=true
+          fi
+
+          if ! git merge-base --is-ancestor "$UPSTREAM_SHA" HEAD; then
+            if ! git merge --no-edit "$UPSTREAM_SHA"; then
+              handle_merge_failure
+            fi
+            changed=true
+          fi
+
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the upstream conflict issue
+        if: steps.merge.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_SHA: ${{ steps.prepare.outputs.base }}
+          UPSTREAM_SHA: ${{ steps.prepare.outputs.upstream }}
+          REPO: ${{ github.repository }}
+        run: |
+          title='Upstream sync conflict: tphakala/birdnet-go main'
+          issue=$(gh issue list --repo "$REPO" --state open --json number,title \
+            --jq '.[] | select(.title == "Upstream sync conflict: tphakala/birdnet-go main") | .number' | head -n 1)
+          {
+            echo 'The daily/manual upstream sync found merge conflicts. No conflict branch or commit was pushed.'
+            echo
+            echo "Fork main at check: \`$BASE_SHA\`"
+            echo "Upstream main at check: \`$UPSTREAM_SHA\`"
+            echo
+            echo 'Conflicting paths:'
+            sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/upstream-conflicts.txt"
+            echo
+            echo 'Resolve the conflicts on a review branch, then close this issue. The next scheduled run will retry against current main.'
+          } > "$RUNNER_TEMP/upstream-conflict-issue.md"
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --repo "$REPO" --body-file "$RUNNER_TEMP/upstream-conflict-issue.md"
+          else
+            gh issue create --repo "$REPO" --title "$title" --body-file "$RUNNER_TEMP/upstream-conflict-issue.md"
+          fi
+
+      - name: Push clean update branch
+        if: steps.merge.outputs.changed == 'true'
+        run: git push origin HEAD:refs/heads/automation/upstream-main
+
+      - name: Create or refresh pull request
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ steps.prepare.outputs.base }}
+          UPSTREAM_SHA: ${{ steps.prepare.outputs.upstream }}
+        run: |
+          gh label create upstream-sync --repo "$REPO" --color 1D76DB \
+            --description 'Automated upstream synchronization; run the required checks manually' --force
+          pr=$(gh pr list --repo "$REPO" --head automation/upstream-main --base main \
+            --state open --json number --jq '.[0].number // empty')
+          body="$RUNNER_TEMP/upstream-pr.md"
+          cat > "$body" <<'EOF'
+          This pull request merges tphakala/birdnet-go:main into fork main.
+
+          **CI note:** this PR is created with the repository's GITHUB_TOKEN. GitHub suppresses automatic workflow runs caused by that token. This workflow explicitly starts the repository checks below; review their results before merging.
+          EOF
+          {
+            echo
+            printf 'Fork main before sync: `%s`  \n' "$BASE_SHA"
+            printf 'Upstream main: `%s`\n' "$UPSTREAM_SHA"
+          } >> "$body"
+          if [ -n "$pr" ]; then
+            gh pr edit "$pr" --repo "$REPO" --title 'Sync upstream main' --body-file "$body" --add-label upstream-sync
+          else
+            gh pr create --repo "$REPO" --base main --head automation/upstream-main \
+              --title 'Sync upstream main' --body-file "$body" --label upstream-sync
+          fi
+
+      - name: Start required checks on the proposal branch
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh workflow run golangci-test.yml --repo "$REPO" --ref automation/upstream-main
+          gh workflow run frontend-quality.yml --repo "$REPO" --ref automation/upstream-main
+          gh workflow run install-test.yml --repo "$REPO" --ref automation/upstream-main
+
+      - name: Close resolved conflict issue
+        if: steps.merge.outputs.changed == 'true' || steps.merge.outputs.changed == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          issue=$(gh issue list --repo "$REPO" --state open --json number,title \
+            --jq '.[] | select(.title == "Upstream sync conflict: tphakala/birdnet-go main") | .number' | head -n 1)
+          if [ -n "$issue" ]; then
+            gh issue close "$issue" --repo "$REPO" \
+              --comment 'The latest upstream sync check completed without merge conflicts. Reopen this issue if conflicts remain during manual resolution.'
+          fi

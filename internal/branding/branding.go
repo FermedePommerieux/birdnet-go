@@ -7,8 +7,8 @@
 // so a fork can rebrand the running binary without editing source or
 // translations: bake values in at link time via -ldflags -X, or set the
 // environment variables at runtime. The defaults intentionally stay in source
-// (these are public identity, not secrets), so from-source builds keep pointing
-// at the upstream project. This mirrors the build-time/runtime injection model
+// (these are public identity, not secrets), so from-source builds use this fork’s identity.
+// This mirrors the build-time/runtime injection model
 // used for the Sentry DSN in internal/telemetry.
 package branding
 
@@ -53,11 +53,11 @@ var (
 )
 
 // Built-in defaults, used when neither an environment override nor a baked-in
-// value is present. These are the upstream project's public identity.
+// value is present. These identify the downstream project.
 const (
-	defaultName         = "BirdNET-Go"
-	defaultRepoURL      = "https://github.com/tphakala/birdnet-go"
-	defaultCommunityURL = "https://discord.gg/gcSCFGUtsd"
+	defaultName         = "BirdNET-Go PostgreSQL"
+	defaultRepoURL      = "https://github.com/FermedePommerieux/birdnet-go"
+	defaultCommunityURL = "https://github.com/FermedePommerieux/birdnet-go/discussions"
 
 	issuesPath      = "issues"
 	newIssuePath    = "issues/new"

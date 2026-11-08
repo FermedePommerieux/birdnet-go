@@ -8,7 +8,7 @@ on:
 
 jobs:
   create-issue-on-failure:
-    if: github.event.workflow_run.conclusion == 'failure'
+    if: github.repository == 'tphakala/birdnet-go' && github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-24.04
     permissions:
       issues: write

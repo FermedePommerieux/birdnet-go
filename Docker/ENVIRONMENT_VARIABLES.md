@@ -283,7 +283,7 @@ docker exec birdnet-go cat /tmp/birdnet-startup.log
 ```yaml
 services:
   birdnet-go:
-    image: ghcr.io/tphakala/birdnet-go:latest
+    image: ghcr.io/fermedepommerieux/birdnet-go:latest
     container_name: birdnet-go
     restart: unless-stopped
 
