@@ -278,21 +278,47 @@ func TestRouter_UpdateGainConcurrentWithDispatch(t *testing.T) {
 	}
 
 	stop := make(chan struct{})
+	cancel := make(chan struct{})
+	updatesStarted := make(chan struct{})
+	firstFrameDelivered := make(chan struct{})
 	flipErr := make(chan error, 1)
 	var wg sync.WaitGroup
+	defer func() {
+		close(cancel)
+		wg.Wait()
+	}()
 	wg.Go(func() {
 		for i := range gainUpdateFlips {
 			if err := router.UpdateGain(gainUpdateSource, gains[i%len(gains)]); err != nil {
 				flipErr <- err
 				break
 			}
+			if i == 0 {
+				close(updatesStarted)
+			}
+			if i == gainUpdateFlips/2 {
+				select {
+				case <-firstFrameDelivered:
+				case <-cancel:
+					return
+				}
+			}
 		}
 		close(stop)
 	})
 	wg.Go(func() {
+		select {
+		case <-updatesStarted:
+		case <-stop:
+			return
+		case <-cancel:
+			return
+		}
 		for {
 			select {
 			case <-stop:
+				return
+			case <-cancel:
 				return
 			default:
 				router.Dispatch(gainUpdateFrame(input))
@@ -301,6 +327,8 @@ func TestRouter_UpdateGainConcurrentWithDispatch(t *testing.T) {
 	})
 
 	delivered := 0
+	timer := time.NewTimer(gainUpdateWaitTimeout)
+	defer timer.Stop()
 	for done := false; !done; {
 		select {
 		case f := <-consumer.frames:
@@ -312,10 +340,13 @@ func TestRouter_UpdateGainConcurrentWithDispatch(t *testing.T) {
 					break
 				}
 			}
-			assert.True(t, matched, "delivered frame %d equals none of the three gain references", delivered)
+			require.True(t, matched, "delivered frame %d equals none of the three gain references", delivered)
+			if delivered == 1 {
+				close(firstFrameDelivered)
+			}
 		case <-stop:
 			done = true
-		case <-time.After(gainUpdateWaitTimeout):
+		case <-timer.C:
 			require.FailNow(t, "timed out waiting for frames")
 		}
 	}
