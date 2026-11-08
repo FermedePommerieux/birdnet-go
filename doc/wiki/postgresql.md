@@ -2,7 +2,7 @@
 
 The [Ferme de Pommerieux fork](https://github.com/FermedePommerieux/birdnet-go) supports stable PostgreSQL 17.x and 18.x with UTF8 database and client encodings. PostgreSQL is a fork feature; [upstream BirdNET-Go](https://github.com/tphakala/birdnet-go) images and releases do not include it. We use this backend in our production deployment and maintain its fork-specific code and tests while following upstream changes. That experience does not establish compatibility with every PostgreSQL installation or promise a support response time. SQLite remains the default, and MySQL/MariaDB is still a separate choice.
 
-Install a [published release of this fork](https://github.com/FermedePommerieux/birdnet-go/releases) before enabling PostgreSQL. Container deployments can use the public image `ghcr.io/fermedepommerieux/birdnet-go:latest`, or pin the [published `20261108` release](https://github.com/FermedePommerieux/birdnet-go/releases/tag/20261108). The fork installer selects `latest` by default. The upstream installer, image and release pages do not install this fork's PostgreSQL implementation.
+Install a [published release of this fork](https://github.com/FermedePommerieux/birdnet-go/releases) before enabling PostgreSQL. Container deployments can use the public image `ghcr.io/fermedepommerieux/birdnet-go:latest`, or pin the [published `v2026.11.8` release](https://github.com/FermedePommerieux/birdnet-go/releases/tag/v2026.11.8). The fork installer selects `latest` by default. The upstream installer, image and release pages do not install this fork's PostgreSQL implementation.
 
 ## Configure a database
 

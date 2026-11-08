@@ -60,7 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/i
 bash ./install.sh
 ```
 
-For containers, use the public fork image `ghcr.io/fermedepommerieux/birdnet-go:latest`, or pin the [published `20261108` release](https://github.com/FermedePommerieux/birdnet-go/releases/tag/20261108). The fork installer selects `latest` by default. The [host-network Compose file](Docker/docker-compose.host.yml) and [fork installation guide](doc/wiki/installation.md) describe the deployment layout; verify the image reference before deploying. Fork images target Linux `amd64` and `arm64`. Upstream images do not include this fork's PostgreSQL changes. The Unraid host template is untested on real Unraid.
+For containers, use the public fork image `ghcr.io/fermedepommerieux/birdnet-go:latest`, or pin the [published `v2026.11.8` release](https://github.com/FermedePommerieux/birdnet-go/releases/tag/v2026.11.8). The fork installer selects `latest` by default. The [host-network Compose file](Docker/docker-compose.host.yml) and [fork installation guide](doc/wiki/installation.md) describe the deployment layout; verify the image reference before deploying. Fork images target Linux `amd64` and `arm64`. Upstream images do not include this fork's PostgreSQL changes. The Unraid host template is untested on real Unraid.
 
 Choose SQLite for a new local installation unless you need an external database. To use PostgreSQL 17 or 18, provision a UTF8 database and follow the [PostgreSQL configuration guide](doc/wiki/postgresql.md) before starting the fork. Switching the selected backend starts a separate history: the installer and settings screen do not copy SQLite or MySQL/MariaDB detections into PostgreSQL.
 
