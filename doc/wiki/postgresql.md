@@ -24,7 +24,7 @@ output:
     sslrootcert: /etc/birdnet-go/certs/postgres-ca.crt
 ```
 
-The default TLS mode, `verify-full`, checks the server's certificate chain and hostname. For client-certificate authentication, set both `sslcert` and `sslkey` to files readable by the application. The settings page shows the configured engine. Change PostgreSQL connection settings in the configuration file or service environment.
+The default TLS mode, `verify-full`, checks the server's certificate chain and hostname. For client-certificate authentication, set both `sslcert` and `sslkey` to files readable by the application. In **Settings → Main → Database**, select PostgreSQL and edit the host, port, database, credentials and TLS settings. Save the settings and restart BirdNET-Go to use the new connection. The selected destination does not transfer existing detection history. If `BIRDNET_POSTGRESQL_PASSWORD` is set by the service environment, it takes precedence over the password saved in the configuration file.
 
 ## Compatibility and diagnostics
 

@@ -2525,7 +2525,7 @@
           "description": "Detections database settings",
           "type": {
             "label": "Select Database Type",
-            "helpText": "Select the database type to use for storing detections."
+            "helpText": "Select the database for detections. Switching destinations does not transfer detection history."
           },
           "sqlite": {
             "title": "SQLite Configuration",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Failed to get backup status",
             "backupFailed": "Backup failed",
             "backupDownloadFailed": "Failed to download backup"
+          },
+          "postgresql": {
+            "host": {
+              "label": "PostgreSQL Host",
+              "placeholder": "localhost",
+              "helpText": "Hostname or IP address of the PostgreSQL server."
+            },
+            "port": {
+              "label": "Port",
+              "helpText": "TCP port used by PostgreSQL (default 5432)."
+            },
+            "username": {
+              "label": "Username",
+              "placeholder": "birdnet",
+              "helpText": "PostgreSQL account used to connect."
+            },
+            "password": {
+              "label": "Password",
+              "helpText": "Password for this account. The BIRDNET_POSTGRESQL_PASSWORD service setting takes precedence over this field."
+            },
+            "database": {
+              "label": "Database",
+              "placeholder": "birdnet",
+              "helpText": "Database used for detections. Changing the destination does not automatically transfer detection history."
+            },
+            "sslMode": {
+              "label": "SSL mode",
+              "helpText": "require encrypts the connection. verify-full is recommended: it also verifies the server certificate and hostname."
+            },
+            "sslRootCert": {
+              "label": "Root certificate file",
+              "helpText": "Path to the trusted root certificate file on the BirdNET-Go server."
+            },
+            "sslCert": {
+              "label": "Client certificate file",
+              "helpText": "Path to the client certificate file on the BirdNET-Go server."
+            },
+            "sslKey": {
+              "label": "Client key file",
+              "helpText": "Path to the client private key file on the BirdNET-Go server."
+            }
           }
         },
         "interface": {

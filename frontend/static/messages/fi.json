@@ -2525,7 +2525,7 @@
           "description": "Havaintotietokannan asetukset",
           "type": {
             "label": "Valitse tietokantatyyppi",
-            "helpText": "Valitse havaintojen tallentamiseen käytettävä tietokantatyyppi."
+            "helpText": "Valitse tunnistusten tietokanta. Kohteen vaihtaminen ei siirrä tunnistushistoriaa."
           },
           "sqlite": {
             "title": "SQLite-asetukset",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Varmuuskopioinnin tilan hakeminen epäonnistui",
             "backupFailed": "Varmuuskopiointi epäonnistui",
             "backupDownloadFailed": "Varmuuskopion lataaminen epäonnistui"
+          },
+          "postgresql": {
+            "host": {
+              "label": "PostgreSQL-isäntä",
+              "placeholder": "127.0.0.1",
+              "helpText": "PostgreSQL-palvelimen isäntänimi tai IP-osoite."
+            },
+            "port": {
+              "label": "Portti",
+              "helpText": "PostgreSQL:n käyttämä TCP-portti (oletus 5432)."
+            },
+            "username": {
+              "label": "Käyttäjätunnus",
+              "placeholder": "birdnet",
+              "helpText": "Yhteyden muodostamiseen käytettävä PostgreSQL-tili."
+            },
+            "password": {
+              "label": "Salasana",
+              "helpText": "Tämän tilin salasana. Palvelun BIRDNET_POSTGRESQL_PASSWORD-asetus ohittaa tämän kentän."
+            },
+            "database": {
+              "label": "Tietokanta",
+              "placeholder": "birdnet",
+              "helpText": "Tunnistuksille käytettävä tietokanta. Kohteen vaihtaminen ei siirrä tunnistushistoriaa automaattisesti."
+            },
+            "sslMode": {
+              "label": "SSL-tila",
+              "helpText": "require salaa yhteyden. verify-full on suositeltu: se tarkistaa myös palvelimen varmenteen ja nimen."
+            },
+            "sslRootCert": {
+              "label": "Juurivarmenteen tiedosto",
+              "helpText": "Polku luotettuun juurivarmenteeseen BirdNET-Go-palvelimella."
+            },
+            "sslCert": {
+              "label": "Asiakasvarmenteen tiedosto",
+              "helpText": "Polku asiakasvarmenteeseen BirdNET-Go-palvelimella."
+            },
+            "sslKey": {
+              "label": "Asiakasavaimen tiedosto",
+              "helpText": "Polku asiakkaan yksityiseen avaimeen BirdNET-Go-palvelimella."
+            }
           }
         },
         "interface": {

@@ -2525,7 +2525,7 @@
           "description": "Észlelések adatbázis beállításai",
           "type": {
             "label": "Adatbázis típus kiválasztása",
-            "helpText": "Válassza ki az észlelések tárolásához használt adatbázis típust."
+            "helpText": "Válassza ki az észlelések adatbázisát. A cél módosításakor az előzmények nem kerülnek át."
           },
           "sqlite": {
             "title": "SQLite konfiguráció",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "A mentés állapotának lekérése sikertelen",
             "backupFailed": "A mentés sikertelen",
             "backupDownloadFailed": "A mentés letöltése sikertelen"
+          },
+          "postgresql": {
+            "host": {
+              "label": "PostgreSQL-gazdagép",
+              "placeholder": "127.0.0.1",
+              "helpText": "A PostgreSQL-kiszolgáló gazdagépneve vagy IP-címe."
+            },
+            "port": {
+              "label": "Hálózati port",
+              "helpText": "A PostgreSQL által használt TCP-port (alapértelmezés: 5432)."
+            },
+            "username": {
+              "label": "Felhasználónév",
+              "placeholder": "birdnet",
+              "helpText": "A kapcsolódáshoz használt PostgreSQL-fiók."
+            },
+            "password": {
+              "label": "Jelszó",
+              "helpText": "A fiók jelszava. A BIRDNET_POSTGRESQL_PASSWORD szolgáltatásbeállítás felülírja ezt a mezőt."
+            },
+            "database": {
+              "label": "Adatbázis",
+              "placeholder": "birdnet",
+              "helpText": "Az észlelések adatbázisa. A cél módosítása nem viszi át automatikusan az észlelési előzményeket."
+            },
+            "sslMode": {
+              "label": "SSL-mód",
+              "helpText": "A require titkosítja a kapcsolatot. A verify-full ajánlott: a kiszolgáló tanúsítványát és nevét is ellenőrzi."
+            },
+            "sslRootCert": {
+              "label": "Gyökértanúsítvány-fájl",
+              "helpText": "A megbízható gyökértanúsítvány elérési útja a BirdNET-Go-kiszolgálón."
+            },
+            "sslCert": {
+              "label": "Ügyféltanúsítvány-fájl",
+              "helpText": "Az ügyféltanúsítvány elérési útja a BirdNET-Go-kiszolgálón."
+            },
+            "sslKey": {
+              "label": "Ügyfélkulcsfájl",
+              "helpText": "Az ügyfél privát kulcsának elérési útja a BirdNET-Go-kiszolgálón."
+            }
           }
         },
         "interface": {

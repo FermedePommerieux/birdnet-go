@@ -2525,7 +2525,7 @@
           "description": "Noteikšanas datubāzes iestatījumi",
           "type": {
             "label": "Izvēlieties datubāzes tipu",
-            "helpText": "Izvēlieties datubāzes tipu, ko izmantot noteikšanu glabāšanai."
+            "helpText": "Izvēlieties novērojumu datubāzi. Mainot mērķi, vēsture netiek pārsūtīta."
           },
           "sqlite": {
             "title": "SQLite konfigurācija",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Neizdevās iegūt dublējuma statusu",
             "backupFailed": "Dublēšana neizdevās",
             "backupDownloadFailed": "Neizdevās lejupielādēt dublējumu"
+          },
+          "postgresql": {
+            "host": {
+              "label": "PostgreSQL resursdators",
+              "placeholder": "127.0.0.1",
+              "helpText": "PostgreSQL servera resursdatora nosaukums vai IP adrese."
+            },
+            "port": {
+              "label": "Ports",
+              "helpText": "PostgreSQL izmantotais TCP ports (pēc noklusējuma 5432)."
+            },
+            "username": {
+              "label": "Lietotājvārds",
+              "placeholder": "birdnet",
+              "helpText": "PostgreSQL konts, ko izmantot savienojumam."
+            },
+            "password": {
+              "label": "Parole",
+              "helpText": "Šī konta parole. Pakalpojuma iestatījumam BIRDNET_POSTGRESQL_PASSWORD ir prioritāte pār šo lauku."
+            },
+            "database": {
+              "label": "Datubāze",
+              "placeholder": "birdnet",
+              "helpText": "Datubāze novērojumiem. Mainot mērķi, novērojumu vēsture netiek automātiski pārsūtīta."
+            },
+            "sslMode": {
+              "label": "SSL režīms",
+              "helpText": "require šifrē savienojumu. Ieteicams verify-full: tas pārbauda arī servera sertifikātu un nosaukumu."
+            },
+            "sslRootCert": {
+              "label": "Saknes sertifikāta fails",
+              "helpText": "Uzticamā saknes sertifikāta ceļš BirdNET-Go serverī."
+            },
+            "sslCert": {
+              "label": "Klienta sertifikāta fails",
+              "helpText": "Klienta sertifikāta ceļš BirdNET-Go serverī."
+            },
+            "sslKey": {
+              "label": "Klienta atslēgas fails",
+              "helpText": "Klienta privātās atslēgas ceļš BirdNET-Go serverī."
+            }
           }
         },
         "interface": {

@@ -2525,7 +2525,7 @@
           "description": "Ustawienia bazy danych detekcji",
           "type": {
             "label": "Wybierz Typ Bazy Danych",
-            "helpText": "Wybierz typ bazy danych do przechowywania detekcji."
+            "helpText": "Wybierz bazę danych dla wykryć. Zmiana miejsca docelowego nie przenosi historii."
           },
           "sqlite": {
             "title": "Konfiguracja SQLite",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Nie udało się pobrać statusu kopii zapasowej",
             "backupFailed": "Kopia zapasowa nie powiodła się",
             "backupDownloadFailed": "Nie udało się pobrać kopii zapasowej"
+          },
+          "postgresql": {
+            "host": {
+              "label": "Host PostgreSQL",
+              "placeholder": "127.0.0.1",
+              "helpText": "Nazwa hosta lub adres IP serwera PostgreSQL."
+            },
+            "port": {
+              "label": "Port sieciowy",
+              "helpText": "Port TCP używany przez PostgreSQL (domyślnie 5432)."
+            },
+            "username": {
+              "label": "Nazwa użytkownika",
+              "placeholder": "birdnet",
+              "helpText": "Konto PostgreSQL używane do połączenia."
+            },
+            "password": {
+              "label": "Hasło",
+              "helpText": "Hasło do tego konta. Ustawienie usługi BIRDNET_POSTGRESQL_PASSWORD ma pierwszeństwo przed tym polem."
+            },
+            "database": {
+              "label": "Baza danych",
+              "placeholder": "birdnet",
+              "helpText": "Baza danych dla wykryć. Zmiana miejsca docelowego nie przenosi automatycznie historii wykryć."
+            },
+            "sslMode": {
+              "label": "Tryb SSL",
+              "helpText": "require szyfruje połączenie. Zalecamy verify-full: dodatkowo weryfikuje certyfikat i nazwę serwera."
+            },
+            "sslRootCert": {
+              "label": "Plik certyfikatu głównego",
+              "helpText": "Ścieżka do zaufanego certyfikatu głównego na serwerze BirdNET-Go."
+            },
+            "sslCert": {
+              "label": "Plik certyfikatu klienta",
+              "helpText": "Ścieżka do certyfikatu klienta na serwerze BirdNET-Go."
+            },
+            "sslKey": {
+              "label": "Plik klucza klienta",
+              "helpText": "Ścieżka do prywatnego klucza klienta na serwerze BirdNET-Go."
+            }
           }
         },
         "interface": {

@@ -2525,7 +2525,7 @@
           "description": "Impostazioni database rilevamenti",
           "type": {
             "label": "Seleziona Tipo Database",
-            "helpText": "Seleziona il tipo di database da usare per memorizzare i rilevamenti."
+            "helpText": "Seleziona il database delle rilevazioni. Cambiando destinazione, la cronologia non viene trasferita."
           },
           "sqlite": {
             "title": "Configurazione SQLite",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Recupero dello stato del backup non riuscito",
             "backupFailed": "Backup non riuscito",
             "backupDownloadFailed": "Download del backup non riuscito"
+          },
+          "postgresql": {
+            "host": {
+              "label": "Host PostgreSQL",
+              "placeholder": "127.0.0.1",
+              "helpText": "Nome host o indirizzo IP del server PostgreSQL."
+            },
+            "port": {
+              "label": "Porta di rete",
+              "helpText": "Porta TCP usata da PostgreSQL (predefinita 5432)."
+            },
+            "username": {
+              "label": "Nome utente",
+              "placeholder": "birdnet",
+              "helpText": "Account PostgreSQL usato per la connessione."
+            },
+            "password": {
+              "label": "Password account",
+              "helpText": "Password dell’account. L’impostazione di servizio BIRDNET_POSTGRESQL_PASSWORD ha la precedenza su questo campo."
+            },
+            "database": {
+              "label": "Banca dati",
+              "placeholder": "birdnet",
+              "helpText": "Database delle rilevazioni. Cambiare destinazione non trasferisce automaticamente la cronologia delle rilevazioni."
+            },
+            "sslMode": {
+              "label": "Modalità SSL",
+              "helpText": "require cifra la connessione. Si consiglia verify-full: verifica anche il certificato e il nome del server."
+            },
+            "sslRootCert": {
+              "label": "File del certificato radice",
+              "helpText": "Percorso del certificato radice attendibile sul server BirdNET-Go."
+            },
+            "sslCert": {
+              "label": "File del certificato client",
+              "helpText": "Percorso del certificato client sul server BirdNET-Go."
+            },
+            "sslKey": {
+              "label": "File della chiave client",
+              "helpText": "Percorso della chiave privata client sul server BirdNET-Go."
+            }
           }
         },
         "interface": {

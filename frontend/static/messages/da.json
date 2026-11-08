@@ -2525,7 +2525,7 @@
           "description": "Indstillinger for detektionsdatabasen",
           "type": {
             "label": "Vælg databasetype",
-            "helpText": "Vælg den databasetype, der skal bruges til at gemme detektioner."
+            "helpText": "Vælg databasen til registreringer. Hvis destinationen ændres, overføres historikken ikke."
           },
           "sqlite": {
             "title": "SQLite-konfiguration",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Kunne ikke hente backupstatus",
             "backupFailed": "Backup mislykkedes",
             "backupDownloadFailed": "Kunne ikke downloade backup"
+          },
+          "postgresql": {
+            "host": {
+              "label": "PostgreSQL-vært",
+              "placeholder": "127.0.0.1",
+              "helpText": "Værtsnavn eller IP-adresse på PostgreSQL-serveren."
+            },
+            "port": {
+              "label": "Netværksport",
+              "helpText": "TCP-port, som PostgreSQL bruger (standard 5432)."
+            },
+            "username": {
+              "label": "Brugernavn",
+              "placeholder": "birdnet",
+              "helpText": "PostgreSQL-kontoen, der bruges til at oprette forbindelse."
+            },
+            "password": {
+              "label": "Adgangskode",
+              "helpText": "Adgangskode til denne konto. Tjenesteindstillingen BIRDNET_POSTGRESQL_PASSWORD har forrang for dette felt."
+            },
+            "database": {
+              "label": "Databasen",
+              "placeholder": "birdnet",
+              "helpText": "Database til registreringer. Ændring af destination overfører ikke automatisk registreringshistorikken."
+            },
+            "sslMode": {
+              "label": "SSL-tilstand",
+              "helpText": "require krypterer forbindelsen. verify-full anbefales: den kontrollerer også servercertifikatet og værtsnavnet."
+            },
+            "sslRootCert": {
+              "label": "Rodcertifikatfil",
+              "helpText": "Sti til det betroede rodcertifikat på BirdNET-Go-serveren."
+            },
+            "sslCert": {
+              "label": "Klientcertifikatfil",
+              "helpText": "Sti til klientcertifikatfilen på BirdNET-Go-serveren."
+            },
+            "sslKey": {
+              "label": "Klientnøglefil",
+              "helpText": "Sti til klientens private nøglefil på BirdNET-Go-serveren."
+            }
           }
         },
         "interface": {

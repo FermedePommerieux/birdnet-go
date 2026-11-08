@@ -2525,7 +2525,7 @@
           "description": "Inställningar för detektionsdatabasen",
           "type": {
             "label": "Välj databastyp",
-            "helpText": "Välj vilken databastyp som ska användas för att lagra detektioner."
+            "helpText": "Välj databas för upptäckter. Historiken överförs inte när målet ändras."
           },
           "sqlite": {
             "title": "SQLite-konfiguration",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Kunde inte hämta status för säkerhetskopiering",
             "backupFailed": "Säkerhetskopieringen misslyckades",
             "backupDownloadFailed": "Kunde inte ladda ner säkerhetskopia"
+          },
+          "postgresql": {
+            "host": {
+              "label": "PostgreSQL-värd",
+              "placeholder": "127.0.0.1",
+              "helpText": "Värdnamn eller IP-adress till PostgreSQL-servern."
+            },
+            "port": {
+              "label": "Nätverksport",
+              "helpText": "TCP-port som PostgreSQL använder (standard 5432)."
+            },
+            "username": {
+              "label": "Användarnamn",
+              "placeholder": "birdnet",
+              "helpText": "PostgreSQL-kontot som används för anslutningen."
+            },
+            "password": {
+              "label": "Lösenord",
+              "helpText": "Lösenord för kontot. Tjänsteinställningen BIRDNET_POSTGRESQL_PASSWORD har företräde framför det här fältet."
+            },
+            "database": {
+              "label": "Databas",
+              "placeholder": "birdnet",
+              "helpText": "Databas för upptäckter. Om målet ändras överförs inte upptäcktshistoriken automatiskt."
+            },
+            "sslMode": {
+              "label": "SSL-läge",
+              "helpText": "require krypterar anslutningen. verify-full rekommenderas: det verifierar även servercertifikatet och värdnamnet."
+            },
+            "sslRootCert": {
+              "label": "Rotcertifikatfil",
+              "helpText": "Sökväg till det betrodda rotcertifikatet på BirdNET-Go-servern."
+            },
+            "sslCert": {
+              "label": "Klientcertifikatfil",
+              "helpText": "Sökväg till klientcertifikatet på BirdNET-Go-servern."
+            },
+            "sslKey": {
+              "label": "Klientnyckelfil",
+              "helpText": "Sökväg till klientens privata nyckel på BirdNET-Go-servern."
+            }
           }
         },
         "interface": {

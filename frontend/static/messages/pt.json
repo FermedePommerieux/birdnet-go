@@ -2525,7 +2525,7 @@
           "description": "Configurações do banco de dados de detecções",
           "type": {
             "label": "Selecionar tipo de banco de dados",
-            "helpText": "Selecione o tipo de banco de dados a ser usado para armazenar detecções."
+            "helpText": "Selecione a base de dados das deteções. A alteração do destino não transfere o histórico."
           },
           "sqlite": {
             "title": "Configuração SQLite",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Falha ao obter o status do backup",
             "backupFailed": "Backup falhou",
             "backupDownloadFailed": "Falha ao baixar o backup"
+          },
+          "postgresql": {
+            "host": {
+              "label": "Anfitrião PostgreSQL",
+              "placeholder": "127.0.0.1",
+              "helpText": "Nome do anfitrião ou endereço IP do servidor PostgreSQL."
+            },
+            "port": {
+              "label": "Porta",
+              "helpText": "Porta TCP utilizada pelo PostgreSQL (predefinição 5432)."
+            },
+            "username": {
+              "label": "Nome de utilizador",
+              "placeholder": "birdnet",
+              "helpText": "Conta PostgreSQL utilizada para estabelecer ligação."
+            },
+            "password": {
+              "label": "Palavra-passe",
+              "helpText": "Palavra-passe desta conta. A definição de serviço BIRDNET_POSTGRESQL_PASSWORD prevalece sobre este campo."
+            },
+            "database": {
+              "label": "Base de dados",
+              "placeholder": "birdnet",
+              "helpText": "Base de dados das deteções. Alterar o destino não transfere automaticamente o histórico de deteções."
+            },
+            "sslMode": {
+              "label": "Modo SSL",
+              "helpText": "require cifra a ligação. Recomenda-se verify-full: também verifica o certificado e o nome do servidor."
+            },
+            "sslRootCert": {
+              "label": "Ficheiro do certificado raiz",
+              "helpText": "Caminho para o certificado raiz fidedigno no servidor BirdNET-Go."
+            },
+            "sslCert": {
+              "label": "Ficheiro do certificado de cliente",
+              "helpText": "Caminho para o certificado de cliente no servidor BirdNET-Go."
+            },
+            "sslKey": {
+              "label": "Ficheiro da chave de cliente",
+              "helpText": "Caminho para a chave privada de cliente no servidor BirdNET-Go."
+            }
           }
         },
         "interface": {

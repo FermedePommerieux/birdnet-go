@@ -2525,7 +2525,7 @@
           "description": "Herkenningen database instellingen",
           "type": {
             "label": "Selecteer Database Type",
-            "helpText": "Selecteer het database type om te gebruiken voor het opslaan van herkenningen."
+            "helpText": "Selecteer de database voor detecties. Bij een andere bestemming wordt de geschiedenis niet overgezet."
           },
           "sqlite": {
             "title": "SQLite-configuratie",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Back-upstatus ophalen mislukt",
             "backupFailed": "Back-up mislukt",
             "backupDownloadFailed": "Back-up downloaden mislukt"
+          },
+          "postgresql": {
+            "host": {
+              "label": "PostgreSQL-host",
+              "placeholder": "127.0.0.1",
+              "helpText": "Hostnaam of IP-adres van de PostgreSQL-server."
+            },
+            "port": {
+              "label": "Netwerkpoort",
+              "helpText": "TCP-poort die PostgreSQL gebruikt (standaard 5432)."
+            },
+            "username": {
+              "label": "Gebruikersnaam",
+              "placeholder": "birdnet",
+              "helpText": "PostgreSQL-account voor de verbinding."
+            },
+            "password": {
+              "label": "Wachtwoord",
+              "helpText": "Wachtwoord voor dit account. De service-instelling BIRDNET_POSTGRESQL_PASSWORD heeft voorrang op dit veld."
+            },
+            "database": {
+              "label": "Databank",
+              "placeholder": "birdnet",
+              "helpText": "Database voor detecties. Een andere bestemming kiezen draagt de detectiegeschiedenis niet automatisch over."
+            },
+            "sslMode": {
+              "label": "SSL-modus",
+              "helpText": "require versleutelt de verbinding. verify-full wordt aanbevolen: hiermee worden ook het servercertificaat en de hostnaam gecontroleerd."
+            },
+            "sslRootCert": {
+              "label": "Bestand met rootcertificaat",
+              "helpText": "Pad naar het vertrouwde rootcertificaat op de BirdNET-Go-server."
+            },
+            "sslCert": {
+              "label": "Bestand met clientcertificaat",
+              "helpText": "Pad naar het clientcertificaat op de BirdNET-Go-server."
+            },
+            "sslKey": {
+              "label": "Bestand met clientsleutel",
+              "helpText": "Pad naar de privésleutel van de client op de BirdNET-Go-server."
+            }
           }
         },
         "interface": {

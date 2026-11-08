@@ -2525,7 +2525,7 @@
           "description": "Einstellungen der Erkennungsdatenbank",
           "type": {
             "label": "Datenbanktyp auswählen",
-            "helpText": "Wählen Sie den Datenbanktyp zum Speichern von Erkennungen."
+            "helpText": "Wählen Sie die Datenbank für Erkennungen. Beim Wechsel des Ziels wird der Erkennungsverlauf nicht übertragen."
           },
           "sqlite": {
             "title": "SQLite-Konfiguration",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Sicherungsstatus konnte nicht abgerufen werden",
             "backupFailed": "Sicherung fehlgeschlagen",
             "backupDownloadFailed": "Sicherung konnte nicht heruntergeladen werden"
+          },
+          "postgresql": {
+            "host": {
+              "label": "PostgreSQL-Host",
+              "placeholder": "127.0.0.1",
+              "helpText": "Hostname oder IP-Adresse des PostgreSQL-Servers."
+            },
+            "port": {
+              "label": "Netzwerkport",
+              "helpText": "Von PostgreSQL verwendeter TCP-Port (Standard: 5432)."
+            },
+            "username": {
+              "label": "Benutzername",
+              "placeholder": "birdnet",
+              "helpText": "PostgreSQL-Konto für die Verbindung."
+            },
+            "password": {
+              "label": "Passwort",
+              "helpText": "Passwort für dieses Konto. Die Diensteinstellung BIRDNET_POSTGRESQL_PASSWORD hat Vorrang vor diesem Feld."
+            },
+            "database": {
+              "label": "Datenbank",
+              "placeholder": "birdnet",
+              "helpText": "Datenbank für Erkennungen. Beim Ändern des Ziels wird der Erkennungsverlauf nicht automatisch übertragen."
+            },
+            "sslMode": {
+              "label": "SSL-Modus",
+              "helpText": "require verschlüsselt die Verbindung. verify-full wird empfohlen: Dabei werden auch Serverzertifikat und Hostname geprüft."
+            },
+            "sslRootCert": {
+              "label": "Datei des Stammzertifikats",
+              "helpText": "Pfad zum vertrauenswürdigen Stammzertifikat auf dem BirdNET-Go-Server."
+            },
+            "sslCert": {
+              "label": "Datei des Clientzertifikats",
+              "helpText": "Pfad zur Clientzertifikatdatei auf dem BirdNET-Go-Server."
+            },
+            "sslKey": {
+              "label": "Datei des Clientschlüssels",
+              "helpText": "Pfad zum privaten Clientschlüssel auf dem BirdNET-Go-Server."
+            }
           }
         },
         "interface": {

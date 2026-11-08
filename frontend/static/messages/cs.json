@@ -2525,7 +2525,7 @@
           "description": "Nastavení databáze detekcí",
           "type": {
             "label": "Vyberte typ databáze",
-            "helpText": "Vyberte typ databáze, který se použije pro ukládání detekcí."
+            "helpText": "Vyberte databázi pro detekce. Při změně cíle se historie detekcí nepřenáší."
           },
           "sqlite": {
             "title": "Konfigurace SQLite",
@@ -2585,6 +2585,47 @@
             "backupStatusFailed": "Nepodařilo se získat stav zálohování",
             "backupFailed": "Zálohování selhalo",
             "backupDownloadFailed": "Nepodařilo se stáhnout zálohu"
+          },
+          "postgresql": {
+            "host": {
+              "label": "Hostitel PostgreSQL",
+              "placeholder": "127.0.0.1",
+              "helpText": "Název hostitele nebo IP adresa serveru PostgreSQL."
+            },
+            "port": {
+              "label": "Síťový port",
+              "helpText": "Port TCP používaný PostgreSQL (výchozí 5432)."
+            },
+            "username": {
+              "label": "Uživatelské jméno",
+              "placeholder": "birdnet",
+              "helpText": "Účet PostgreSQL používaný k připojení."
+            },
+            "password": {
+              "label": "Heslo",
+              "helpText": "Heslo k tomuto účtu. Nastavení služby BIRDNET_POSTGRESQL_PASSWORD má přednost před tímto polem."
+            },
+            "database": {
+              "label": "Databáze",
+              "placeholder": "birdnet",
+              "helpText": "Databáze pro záznamy detekcí. Změna cíle automaticky nepřenese historii detekcí."
+            },
+            "sslMode": {
+              "label": "Režim SSL",
+              "helpText": "režim require šifruje připojení. Doporučujeme verify-full: ověřuje také certifikát a název serveru."
+            },
+            "sslRootCert": {
+              "label": "Soubor kořenového certifikátu",
+              "helpText": "Cesta k důvěryhodnému kořenovému certifikátu na serveru BirdNET-Go."
+            },
+            "sslCert": {
+              "label": "Soubor klientského certifikátu",
+              "helpText": "Cesta ke klientskému certifikátu na serveru BirdNET-Go."
+            },
+            "sslKey": {
+              "label": "Soubor klientského klíče",
+              "helpText": "Cesta k soukromému klíči klienta na serveru BirdNET-Go."
+            }
           }
         },
         "interface": {

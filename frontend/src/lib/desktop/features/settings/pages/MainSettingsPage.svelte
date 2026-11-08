@@ -8,7 +8,7 @@
   - Tabbed interface: General, Location, Database
   - Node identification and settings
   - Interactive map for station location (shared LocationMap component)
-  - Database type selection (SQLite/MySQL)
+  - Database type selection (SQLite/MySQL/PostgreSQL)
 
   Props: None - This is a page component that uses global settings stores
 
@@ -74,13 +74,36 @@
 
   // Extended option type for database
   interface DatabaseOption extends SelectOption {
-    databaseType: DatabaseType;
+    databaseType: DatabaseType | 'postgres';
   }
+
+  type DatabaseSelection = DatabaseOption['databaseType'];
+
+  const defaultPostgreSQLSettings = {
+    enabled: false,
+    username: 'birdnet',
+    password: '',
+    database: 'birdnet',
+    host: 'localhost',
+    port: '5432',
+    sslMode: 'verify-full',
+    sslRootCert: '',
+    sslCert: '',
+    sslKey: '',
+  };
+
+  const postgresSSLModeOptions: SelectOption[] = [
+    { value: 'disable', label: 'disable' },
+    { value: 'require', label: 'require' },
+    { value: 'verify-ca', label: 'verify-ca' },
+    { value: 'verify-full', label: 'verify-full' },
+  ];
 
   // Database options with icons
   const databaseOptions: DatabaseOption[] = [
     { value: 'sqlite', label: 'SQLite', databaseType: 'sqlite' },
     { value: 'mysql', label: 'MySQL', databaseType: 'mysql' },
+    { value: 'postgres', label: 'PostgreSQL', databaseType: 'postgres' },
   ];
 
   // PERFORMANCE OPTIMIZATION: Reactive settings with proper defaults
@@ -113,6 +136,7 @@
         host: 'localhost',
         port: '3306',
       },
+      postgresql: defaultPostgreSQLSettings,
     },
     weather: $realtimeSettings?.weather || weatherDefaults,
     sentry: $settingsStore.formData.sentry || {
@@ -126,18 +150,13 @@
   let store = $derived($settingsStore);
 
   // Database type selection
-  let selectedDatabaseType = $state('sqlite');
-
-  $effect(() => {
+  let selectedDatabaseType = $derived.by((): DatabaseSelection => {
     if ($outputSettings?.postgresql?.enabled) {
-      selectedDatabaseType = 'postgres';
+      return 'postgres';
     } else if (settings.output.mysql.enabled) {
-      selectedDatabaseType = 'mysql';
-    } else if (settings.output.sqlite.enabled) {
-      selectedDatabaseType = 'sqlite';
-    } else {
-      selectedDatabaseType = 'sqlite';
+      return 'mysql';
     }
+    return 'sqlite';
   });
 
   // Change detection per tab - General includes node identity and telemetry
@@ -296,11 +315,23 @@
     });
   }
 
-  function updateDatabaseType(type: 'sqlite' | 'mysql') {
+  function updatePostgreSQLSettings(updates: Partial<typeof defaultPostgreSQLSettings>) {
+    settingsActions.updateSection('output', {
+      ...settings.output,
+      postgresql: { ...defaultPostgreSQLSettings, ...settings.output.postgresql, ...updates },
+    });
+  }
+
+  function updateDatabaseType(type: DatabaseSelection) {
     settingsActions.updateSection('output', {
       ...settings.output,
       sqlite: { ...settings.output.sqlite, enabled: type === 'sqlite' },
       mysql: { ...settings.output.mysql, enabled: type === 'mysql' },
+      postgresql: {
+        ...defaultPostgreSQLSettings,
+        ...settings.output.postgresql,
+        enabled: type === 'postgres',
+      },
     });
   }
 
@@ -859,42 +890,39 @@
       <div class="space-y-6">
         <!-- Database Type Selector -->
         <div class="max-w-md">
-          {#if selectedDatabaseType === 'postgres'}
-            <dl>
-              <dt class="text-sm text-muted">{t('settings.main.sections.database.stats.type')}</dt>
-              <dd class="font-medium">PostgreSQL</dd>
-              <dd class="text-xs text-muted"><code>config.yaml · output.postgresql</code></dd>
-            </dl>
-          {:else}
-            <SelectDropdown
-              options={databaseOptions}
-              value={selectedDatabaseType}
-              label={t('settings.main.sections.database.type.label')}
-              helpText={t('settings.main.sections.database.type.helpText')}
-              disabled={store.isLoading || store.isSaving}
-              variant="select"
-              groupBy={false}
-              onChange={value => {
-                selectedDatabaseType = value as string;
-                updateDatabaseType(value as 'sqlite' | 'mysql');
-              }}
-            >
-              {#snippet renderOption(option)}
-                {@const dbOption = option as DatabaseOption}
-                <div class="flex items-center gap-2">
+          <SelectDropdown
+            options={databaseOptions}
+            value={selectedDatabaseType}
+            label={t('settings.main.sections.database.type.label')}
+            helpText={t('settings.main.sections.database.type.helpText')}
+            disabled={store.isLoading || store.isSaving}
+            variant="select"
+            groupBy={false}
+            onChange={value => updateDatabaseType(value as DatabaseSelection)}
+          >
+            {#snippet renderOption(option)}
+              {@const dbOption = option as DatabaseOption}
+              <div class="flex items-center gap-2">
+                {#if dbOption.databaseType === 'postgres'}
+                  <Database class="size-4" />
+                {:else}
                   <DatabaseIcon database={dbOption.databaseType} className="size-4" />
-                  <span>{dbOption.label}</span>
-                </div>
-              {/snippet}
-              {#snippet renderSelected(options)}
-                {@const dbOption = options[0] as DatabaseOption}
-                <span class="flex items-center gap-2">
+                {/if}
+                <span>{dbOption.label}</span>
+              </div>
+            {/snippet}
+            {#snippet renderSelected(options)}
+              {@const dbOption = options[0] as DatabaseOption}
+              <span class="flex items-center gap-2">
+                {#if dbOption.databaseType === 'postgres'}
+                  <Database class="size-4" />
+                {:else}
                   <DatabaseIcon database={dbOption.databaseType} className="size-4" />
-                  <span>{dbOption.label}</span>
-                </span>
-              {/snippet}
-            </SelectDropdown>
-          {/if}
+                {/if}
+                <span>{dbOption.label}</span>
+              </span>
+            {/snippet}
+          </SelectDropdown>
         </div>
 
         <!-- SQLite Settings -->
@@ -967,6 +995,91 @@
               helpText={t('settings.main.sections.database.mysql.database.helpText')}
               disabled={store.isLoading || store.isSaving}
               onchange={database => updateMySQLSettings({ database })}
+            />
+          </div>
+        {/if}
+
+        <!-- PostgreSQL Settings -->
+        {#if selectedDatabaseType === 'postgres'}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <TextInput
+              id="postgresql-host"
+              value={settings.output.postgresql?.host ?? defaultPostgreSQLSettings.host}
+              label={t('settings.main.sections.database.postgresql.host.label')}
+              placeholder={t('settings.main.sections.database.postgresql.host.placeholder')}
+              helpText={t('settings.main.sections.database.postgresql.host.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              onchange={host => updatePostgreSQLSettings({ host })}
+            />
+            <TextInput
+              id="postgresql-port"
+              value={settings.output.postgresql?.port ?? defaultPostgreSQLSettings.port}
+              label={t('settings.main.sections.database.postgresql.port.label')}
+              helpText={t('settings.main.sections.database.postgresql.port.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              onchange={port => updatePostgreSQLSettings({ port })}
+            />
+            <TextInput
+              id="postgresql-username"
+              value={settings.output.postgresql?.username ?? defaultPostgreSQLSettings.username}
+              label={t('settings.main.sections.database.postgresql.username.label')}
+              placeholder={t('settings.main.sections.database.postgresql.username.placeholder')}
+              helpText={t('settings.main.sections.database.postgresql.username.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              onchange={username => updatePostgreSQLSettings({ username })}
+            />
+            <PasswordField
+              id="postgresql-password"
+              value={settings.output.postgresql?.password ?? defaultPostgreSQLSettings.password}
+              label={t('settings.main.sections.database.postgresql.password.label')}
+              helpText={t('settings.main.sections.database.postgresql.password.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              onUpdate={password => updatePostgreSQLSettings({ password })}
+            />
+            <TextInput
+              id="postgresql-database"
+              value={settings.output.postgresql?.database ?? defaultPostgreSQLSettings.database}
+              label={t('settings.main.sections.database.postgresql.database.label')}
+              placeholder={t('settings.main.sections.database.postgresql.database.placeholder')}
+              helpText={t('settings.main.sections.database.postgresql.database.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              onchange={database => updatePostgreSQLSettings({ database })}
+            />
+            <SelectDropdown
+              id="postgresql-ssl-mode"
+              options={postgresSSLModeOptions}
+              value={settings.output.postgresql?.sslMode ?? defaultPostgreSQLSettings.sslMode}
+              label={t('settings.main.sections.database.postgresql.sslMode.label')}
+              helpText={t('settings.main.sections.database.postgresql.sslMode.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              variant="select"
+              groupBy={false}
+              onChange={sslMode => updatePostgreSQLSettings({ sslMode: sslMode as string })}
+            />
+            <TextInput
+              id="postgresql-ssl-root-cert"
+              value={settings.output.postgresql?.sslRootCert ??
+                defaultPostgreSQLSettings.sslRootCert}
+              label={t('settings.main.sections.database.postgresql.sslRootCert.label')}
+              helpText={t('settings.main.sections.database.postgresql.sslRootCert.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              onchange={sslRootCert => updatePostgreSQLSettings({ sslRootCert })}
+            />
+            <TextInput
+              id="postgresql-ssl-cert"
+              value={settings.output.postgresql?.sslCert ?? defaultPostgreSQLSettings.sslCert}
+              label={t('settings.main.sections.database.postgresql.sslCert.label')}
+              helpText={t('settings.main.sections.database.postgresql.sslCert.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              onchange={sslCert => updatePostgreSQLSettings({ sslCert })}
+            />
+            <TextInput
+              id="postgresql-ssl-key"
+              value={settings.output.postgresql?.sslKey ?? defaultPostgreSQLSettings.sslKey}
+              label={t('settings.main.sections.database.postgresql.sslKey.label')}
+              helpText={t('settings.main.sections.database.postgresql.sslKey.helpText')}
+              disabled={store.isLoading || store.isSaving}
+              onchange={sslKey => updatePostgreSQLSettings({ sslKey })}
             />
           </div>
         {/if}
