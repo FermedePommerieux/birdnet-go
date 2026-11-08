@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "Databasservern behöver uppmärksamhet",
-        "serverAttentionMessage": "MySQL- eller MariaDB-servern är inte en version som stöds, eller så använder databasen inte teckenuppsättningen utf8mb4. Öppna System > Hälsa för detaljer."
+        "serverAttentionMessage": "MySQL- eller MariaDB-servern är inte en version som stöds, eller så använder databasen inte teckenuppsättningen utf8mb4. Öppna System > Hälsa för detaljer.",
+        "postgresHealthyTitle": "PostgreSQL-server",
+        "postgresHealthyMessage": "PostgreSQL {version} (versionsnummer {versionNum}); serverkodning {serverEncoding}; klientkodning {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (versionsnummer {versionNum}); serverkodning {serverEncoding}; klientkodning {clientEncoding}. Versioner som stöds: {supportedVersions}. Båda kodningarna måste vara UTF8. Se System > Hälsa för mer information."
       },
       "cleanup": {
         "completeTitle": "Rensning av gammal databas slutförd",

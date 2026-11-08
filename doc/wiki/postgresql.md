@@ -1,6 +1,6 @@
 # PostgreSQL (v2 storage)
 
-This fork has been tested with PostgreSQL 17.11 and Go 1.27.2 on 7 November 2026. SQLite remains the default.
+This fork supports stable PostgreSQL 17.x and 18.x with UTF8 database and client encodings. SQLite remains the default.
 
 ## Configure a database
 
@@ -25,6 +25,19 @@ output:
 ```
 
 The default TLS mode, `verify-full`, checks the server's certificate chain and hostname. For client-certificate authentication, set both `sslcert` and `sslkey` to files readable by the application. The settings page shows the configured engine. Change PostgreSQL connection settings in the configuration file or service environment.
+
+## Compatibility and diagnostics
+
+At startup BirdNET-Go reads `server_version`, `server_version_num`, `server_encoding` and `client_encoding` on the same PostgreSQL connection it will use to initialize the schema. It checks the reported release against the tested major versions and requires UTF8 for both encodings. An unsupported major, a prerelease, inconsistent version information or an incompatible encoding stops startup before schema changes or seed writes, including when opening an existing v2 database.
+
+If startup refuses the connection, check the reported version and both encodings in the service log. Select a supported stable major and configure the client connection for UTF8. A database created with another encoding needs an explicit migration to a UTF8 database. BirdNET-Go preserves the source and does not change its encoding. To inspect the settings using the application login, run:
+
+```sql
+SELECT current_setting('server_version'), current_setting('server_version_num'),
+       current_setting('server_encoding'), current_setting('client_encoding');
+```
+
+In **System → Health**, run diagnostics to see **Database Server Version** and **Database Character Set**. The startup log and the notification bell also show the server version and both encodings. The running service refreshes the bell status after a server change. If startup is refused, the service log remains available even though the web interface cannot start.
 
 ## History and backups
 

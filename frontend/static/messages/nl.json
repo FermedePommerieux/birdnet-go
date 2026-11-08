@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "De databaseserver heeft aandacht nodig",
-        "serverAttentionMessage": "De MySQL- of MariaDB-server is geen ondersteunde versie, of de database gebruikt niet de tekenset utf8mb4. Open Systeem > Gezondheid voor details."
+        "serverAttentionMessage": "De MySQL- of MariaDB-server is geen ondersteunde versie, of de database gebruikt niet de tekenset utf8mb4. Open Systeem > Gezondheid voor details.",
+        "postgresHealthyTitle": "PostgreSQL-server",
+        "postgresHealthyMessage": "PostgreSQL {version} (versienummer {versionNum}); servercodering {serverEncoding}; clientcodering {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (versienummer {versionNum}); servercodering {serverEncoding}; clientcodering {clientEncoding}. Ondersteunde versies: {supportedVersions}. Beide coderingen moeten UTF8 zijn. Open Systeem > Gezondheid voor details."
       },
       "cleanup": {
         "completeTitle": "Opruiming oude database voltooid",

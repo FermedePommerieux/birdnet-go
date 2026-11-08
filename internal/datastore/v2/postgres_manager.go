@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/tphakala/birdnet-go/internal/conf"
+	"github.com/tphakala/birdnet-go/internal/datastore/dbserver"
 	"github.com/tphakala/birdnet-go/internal/datastore/v2/entities"
 	"github.com/tphakala/birdnet-go/internal/errors"
 	"gorm.io/driver/postgres"
@@ -143,44 +144,62 @@ func NewPostgresManager(cfg *conf.PostgreSQLSettings) (*PostgresManager, error) 
 
 // Initialize creates and seeds the v2 schema. It is safe to call on every boot.
 func (m *PostgresManager) Initialize() error {
-	return m.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", postgresAdvisoryLockKey).Error; err != nil {
-			return fmt.Errorf("failed to lock PostgreSQL v2 schema: %w", postgresSafeError(err))
+	return m.db.Transaction(initializePostgresSchema)
+}
+
+func initializePostgresSchema(tx *gorm.DB) error {
+	report, err := dbserver.ReadPostgreSQL(tx.Statement.Context, tx)
+	if err != nil {
+		return fmt.Errorf("PostgreSQL preflight failed: %w", err)
+	}
+	if err := validatePostgresPreflight(report); err != nil {
+		return err
+	}
+	if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", postgresAdvisoryLockKey).Error; err != nil {
+		return fmt.Errorf("failed to lock PostgreSQL v2 schema: %w", postgresSafeError(err))
+	}
+	startup := inspectPostgresSchema(tx)
+	if startup.Error != nil {
+		return startup.Error
+	}
+	if err := tx.AutoMigrate(v2Entities()...); err != nil {
+		safeErr := postgresSafeError(err)
+		reportInitFailure("postgresql", "AutoMigrate", safeErr)
+		return fmt.Errorf("failed to migrate PostgreSQL v2 schema: %w", safeErr)
+	}
+	if err := validatePostgresSchema(tx); err != nil {
+		if errors.Is(err, ErrV2SchemaCorrupted) {
+			return fmt.Errorf("PostgreSQL v2 schema integrity check failed: %w", err)
 		}
-		startup := inspectPostgresSchema(tx)
-		if startup.Error != nil {
-			return startup.Error
-		}
-		if err := tx.AutoMigrate(v2Entities()...); err != nil {
+		return fmt.Errorf("PostgreSQL v2 schema integrity check failed: %w", postgresSafeError(err))
+	}
+	if startup.FreshInstall {
+		if err := MarkFreshInstallCompleted(tx); err != nil {
 			safeErr := postgresSafeError(err)
-			reportInitFailure("postgresql", "AutoMigrate", safeErr)
-			return fmt.Errorf("failed to migrate PostgreSQL v2 schema: %w", safeErr)
+			reportInitFailure("postgresql", "initMigrationState", safeErr)
+			return fmt.Errorf("failed to initialize PostgreSQL migration state: %w", safeErr)
 		}
-		if err := validatePostgresSchema(tx); err != nil {
-			if errors.Is(err, ErrV2SchemaCorrupted) {
-				return fmt.Errorf("PostgreSQL v2 schema integrity check failed: %w", err)
-			}
-			return fmt.Errorf("PostgreSQL v2 schema integrity check failed: %w", postgresSafeError(err))
-		}
-		if startup.FreshInstall {
-			if err := MarkFreshInstallCompleted(tx); err != nil {
-				safeErr := postgresSafeError(err)
-				reportInitFailure("postgresql", "initMigrationState", safeErr)
-				return fmt.Errorf("failed to initialize PostgreSQL migration state: %w", safeErr)
-			}
-		}
-		if err := seedLookupTablesDB(tx); err != nil {
-			safeErr := postgresSafeError(err)
-			reportInitFailure("postgresql", "seedLookupTables", safeErr)
-			return fmt.Errorf("failed to seed PostgreSQL lookup tables: %w", safeErr)
-		}
-		if err := seedDefaultModelDB(tx); err != nil {
-			safeErr := postgresSafeError(err)
-			reportInitFailure("postgresql", "seedDefaultModel", safeErr)
-			return fmt.Errorf("failed to seed PostgreSQL default model: %w", safeErr)
-		}
+	}
+	if err := seedLookupTablesDB(tx); err != nil {
+		safeErr := postgresSafeError(err)
+		reportInitFailure("postgresql", "seedLookupTables", safeErr)
+		return fmt.Errorf("failed to seed PostgreSQL lookup tables: %w", safeErr)
+	}
+	if err := seedDefaultModelDB(tx); err != nil {
+		safeErr := postgresSafeError(err)
+		reportInitFailure("postgresql", "seedDefaultModel", safeErr)
+		return fmt.Errorf("failed to seed PostgreSQL default model: %w", safeErr)
+	}
+	return nil
+}
+
+func validatePostgresPreflight(report dbserver.PostgreSQLReport) error {
+	if report.VersionSupported() && report.EncodingSupported() {
 		return nil
-	})
+	}
+	return fmt.Errorf("PostgreSQL preflight rejected settings (server_version=%q, server_version_num=%d, server_encoding=%q, client_encoding=%q; version_supported=%t, encodings_supported=%t): use a stable PostgreSQL release from supported majors (%s) with a matching version number; require UTF8 server and client encodings by creating the database with UTF8 server encoding and configuring UTF8 client encoding before initializing the schema",
+		report.Version, report.VersionNum, report.ServerEncoding, report.ClientEncoding,
+		report.VersionSupported(), report.EncodingSupported(), dbserver.PostgreSQLSupportedVersions)
 }
 
 // postgresColumnLister lists columns in the active PostgreSQL schema.

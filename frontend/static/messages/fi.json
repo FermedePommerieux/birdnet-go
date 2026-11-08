@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "Tietokantapalvelin vaatii huomiota",
-        "serverAttentionMessage": "MySQL- tai MariaDB-palvelimen versio ei ole tuettu, tai tietokanta ei käytä utf8mb4-merkistöä. Katso lisätiedot kohdasta Järjestelmä > Tila."
+        "serverAttentionMessage": "MySQL- tai MariaDB-palvelimen versio ei ole tuettu, tai tietokanta ei käytä utf8mb4-merkistöä. Katso lisätiedot kohdasta Järjestelmä > Tila.",
+        "postgresHealthyTitle": "PostgreSQL-palvelin",
+        "postgresHealthyMessage": "PostgreSQL {version} (versionumero {versionNum}); palvelimen merkistökoodaus {serverEncoding}; asiakkaan merkistökoodaus {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (versionumero {versionNum}); palvelimen merkistökoodaus {serverEncoding}; asiakkaan merkistökoodaus {clientEncoding}. Tuetut versiot: {supportedVersions}. Molempien koodausten on oltava UTF8. Katso lisätiedot kohdasta Järjestelmä > Tila."
       },
       "cleanup": {
         "completeTitle": "Vanhan tietokannan siivous valmis",

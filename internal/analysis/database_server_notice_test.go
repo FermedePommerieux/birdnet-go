@@ -1,7 +1,10 @@
 package analysis
 
 import (
+	"bytes"
 	"context"
+	"maps"
+	"slices"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -45,6 +48,26 @@ type tagCapture struct {
 	mu   sync.Mutex
 	last [3]string
 	n    int
+}
+
+type postgresNoticeStore struct {
+	items  map[string]*notification.Notification
+	listed int
+}
+
+func (s *postgresNoticeStore) CreateWithMetadata(n *notification.Notification) error {
+	s.items[n.ID] = n
+	return nil
+}
+
+func (s *postgresNoticeStore) Delete(id string) error {
+	delete(s.items, id)
+	return nil
+}
+
+func (s *postgresNoticeStore) List(_ *notification.FilterOptions) ([]*notification.Notification, error) {
+	s.listed++
+	return slices.Collect(maps.Values(s.items)), nil
 }
 
 func (c *tagCapture) set(server, support, charset string) bool {
@@ -130,6 +153,108 @@ func TestAttentionText_Unsupported(t *testing.T) {
 		assert.NotContains(t, got, "end of life")
 		assert.NotRegexp(t, `\d{4}-\d{2}-\d{2}`, got)
 	}
+}
+
+func TestPostgreSQLServerNotice_InformationAndWarning(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		rec := newCadenceNoticeRecorder(t, 2, 1)
+		n := newTestServerNotice(rec, &tagCapture{})
+		healthy := dbserver.PostgreSQLReport{Version: "17.6", VersionNum: 170006,
+			ServerEncoding: "UTF8", ClientEncoding: "UTF8"}
+		n.reportPostgreSQL(healthy)
+		got := rec.last()
+		require.NotNil(t, got)
+		assert.Equal(t, notification.TypeInfo, got.Type)
+		assert.Equal(t, notification.PriorityLow, got.Priority)
+		assert.Equal(t, notification.DeliveryTargetBell, got.DeliveryTarget)
+		assert.Equal(t, true, got.Metadata[postgresNoticeMetadataKey])
+		assert.Equal(t, postgresHealthyTitleKey, got.TitleKey)
+		assert.Equal(t, postgresHealthyMessageKey, got.MessageKey)
+		assert.Equal(t, "17.6", got.MessageParams["version"])
+		assert.Equal(t, "UTF8", got.MessageParams["serverEncoding"])
+		assert.Contains(t, got.Message, "17.6")
+		assert.Contains(t, got.Message, "UTF8")
+		n.reportPostgreSQL(healthy)
+		created, deleted := rec.counts()
+		assert.Equal(t, 1, created)
+		assert.Equal(t, 0, deleted)
+
+		bad := healthy
+		bad.ClientEncoding = "LATIN1"
+		n.reportPostgreSQL(bad)
+		got = rec.last()
+		require.NotNil(t, got)
+		assert.Equal(t, notification.TypeWarning, got.Type)
+		assert.Equal(t, true, got.Metadata[postgresNoticeMetadataKey])
+		assert.Equal(t, notification.MsgDatabaseServerAttentionTitle, got.TitleKey)
+		assert.Equal(t, postgresAttentionMessageKey, got.MessageKey)
+		assert.Equal(t, "LATIN1", got.MessageParams["clientEncoding"])
+		assert.Contains(t, got.Message, "LATIN1")
+		assert.Contains(t, got.Message, "configure both as UTF8")
+		created, deleted = rec.counts()
+		assert.Equal(t, 2, created)
+		assert.Equal(t, 1, deleted)
+		n.stop()
+	})
+}
+
+func TestPostgreSQLServerNotice_UnsupportedVersionIsActionable(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		rec := newCadenceNoticeRecorder(t, 1, 0)
+		n := newTestServerNotice(rec, &tagCapture{})
+		n.reportPostgreSQL(dbserver.PostgreSQLReport{Version: "16.10", VersionNum: 160010,
+			ServerEncoding: "UTF8", ClientEncoding: "UTF8"})
+		got := rec.last()
+		require.NotNil(t, got)
+		assert.Equal(t, notification.TypeWarning, got.Type)
+		assert.Contains(t, got.Message, "16.10")
+		assert.Contains(t, got.Message, dbserver.PostgreSQLSupportedVersions)
+		n.stop()
+	})
+}
+
+func TestPostgreSQLServerNotice_PrunesPriorMarkedNoticeOnce(t *testing.T) {
+	old := notification.NewNotification(notification.TypeInfo, notification.PriorityLow, "renamed", "old").
+		WithComponent(notification.ComponentDatabase).
+		WithMetadata(postgresNoticeMetadataKey, true)
+	unrelated := notification.NewNotification(notification.TypeInfo, notification.PriorityLow, "PostgreSQL server", "other").
+		WithComponent(notification.ComponentDatabase)
+	store := &postgresNoticeStore{items: map[string]*notification.Notification{
+		old.ID: old, unrelated.ID: unrelated,
+	}}
+	n := newDatabaseServerNotice(logger.Global().Module("test"))
+	n.service = func() notification.NoticeService { return store }
+	healthy := dbserver.PostgreSQLReport{Version: "17.6", VersionNum: 170006,
+		ServerEncoding: "UTF8", ClientEncoding: "UTF8"}
+	n.reportPostgreSQL(healthy)
+	assert.NotContains(t, store.items, old.ID)
+	assert.Contains(t, store.items, unrelated.ID)
+	assert.Len(t, store.items, 2)
+	assert.Equal(t, 1, store.listed)
+	n.reportPostgreSQL(healthy)
+	assert.Equal(t, 1, store.listed)
+	n.stop()
+}
+
+func TestPostgreSQLServerNotice_LogsActualSettingsAndReason(t *testing.T) {
+	var output bytes.Buffer
+	n := newDatabaseServerNotice(logger.NewSlogLogger(&output, logger.LogLevelDebug, time.UTC))
+	n.service = func() notification.NoticeService { return nil }
+	n.reportPostgreSQL(dbserver.PostgreSQLReport{Version: "17.6", VersionNum: 170006,
+		ServerEncoding: "UTF8", ClientEncoding: "UTF8"})
+	healthyLog := output.String()
+	assert.Contains(t, healthyLog, "17.6")
+	assert.Contains(t, healthyLog, "170006")
+	assert.Contains(t, healthyLog, `"server_encoding":"UTF8"`)
+	assert.NotContains(t, healthyLog, "needs attention")
+
+	n.reportPostgreSQL(dbserver.PostgreSQLReport{Version: "16.10", VersionNum: 160010,
+		ServerEncoding: "UTF8", ClientEncoding: "LATIN1"})
+	badLog := output.String()
+	assert.Contains(t, badLog, "PostgreSQL server needs attention")
+	assert.Contains(t, badLog, "LATIN1")
+	assert.Contains(t, badLog, dbserver.PostgreSQLSupportedVersions)
+	n.stop()
 }
 
 func TestDatabaseServerNotice_RetriesWithoutServiceThenGivesUp(t *testing.T) {

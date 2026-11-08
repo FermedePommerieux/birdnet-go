@@ -227,8 +227,7 @@ type DatabaseService struct {
 	// sets the real probe.
 	probeServer databaseServerProbe
 
-	// serverNotice logs the server probe, sets its telemetry tags and raises
-	// the bell notice. It exists only after a MySQL or MariaDB probe.
+	// serverNotice logs the server probe and maintains the database bell entry.
 	serverNotice *databaseServerNotice
 }
 
@@ -732,11 +731,17 @@ func (d *DatabaseService) Start(ctx context.Context) error {
 	return nil
 }
 
-// probeDatabaseServer runs the one-shot MySQL or MariaDB server check. It
-// does nothing for SQLite or without a v2 manager, runs under its own bounded
-// context, and only logs: a failed probe never fails startup.
+// probeDatabaseServer checks MySQL, MariaDB or PostgreSQL without failing startup.
 func (d *DatabaseService) probeDatabaseServer(log logger.Logger) {
-	if d.probeServer == nil || d.v2Manager == nil || !d.v2Manager.IsMySQL() {
+	if d.v2Manager == nil {
+		return
+	}
+	if datastoreV2.DialectName(d.v2Manager) == datastoreV2.DialectPostgres {
+		d.serverNotice = newDatabaseServerNotice(log)
+		d.serverNotice.pollPostgreSQL(d.v2Manager.DB())
+		return
+	}
+	if d.probeServer == nil || !d.v2Manager.IsMySQL() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), databaseServerProbeTimeout)

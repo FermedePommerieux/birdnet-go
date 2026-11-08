@@ -49,7 +49,7 @@ func TestDatabaseServerVersionCheck_Status(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			check := NewDatabaseServerVersionCheck(tt.probe)
+			check := NewDatabaseServerVersionCheck(tt.probe, nil)
 			assert.Equal(t, "database_server_version", check.Name())
 			assert.Equal(t, health.CategoryDatabase, check.Category())
 			res := check.Run(t.Context())
@@ -101,7 +101,7 @@ func TestDatabaseCharsetCheck_Status(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			check := NewDatabaseCharsetCheck(tt.probe)
+			check := NewDatabaseCharsetCheck(tt.probe, nil)
 			assert.Equal(t, "database_charset", check.Name())
 			assert.Equal(t, health.CategoryDatabase, check.Category())
 			res := check.Run(t.Context())
@@ -115,7 +115,7 @@ func TestDatabaseCharsetCheck_Status(t *testing.T) {
 		})
 	}
 
-	res := NewDatabaseCharsetCheck(charsetProbe(dbserver.CharsetReport{SchemaCharset: "latin1", Tables: manyTables})).Run(t.Context())
+	res := NewDatabaseCharsetCheck(charsetProbe(dbserver.CharsetReport{SchemaCharset: "latin1", Tables: manyTables}), nil).Run(t.Context())
 	named, ok := res.Details["non_utf8mb4_tables"].([]string)
 	require.True(t, ok)
 	assert.Len(t, named, maxNamedCharsetTables)
@@ -128,4 +128,67 @@ func versionProbe(raw string) DatabaseServerProbe {
 
 func charsetProbe(r dbserver.CharsetReport) DatabaseCharsetProbe {
 	return func(context.Context) (dbserver.CharsetReport, bool, error) { return r, true, nil }
+}
+
+func TestDatabaseServerVersionCheck_PostgreSQL(t *testing.T) {
+	tests := []struct {
+		name    string
+		report  dbserver.PostgreSQLReport
+		err     error
+		status  health.Status
+		message string
+	}{
+		{"supported", dbserver.PostgreSQLReport{Version: "17.4", VersionNum: 170004}, nil, health.StatusHealthy, "supported release"},
+		{"unsupported", dbserver.PostgreSQLReport{Version: "12.9", VersionNum: 120009}, nil, health.StatusWarning, "Upgrade to a supported PostgreSQL release"},
+		{"missing version", dbserver.PostgreSQLReport{}, nil, health.StatusUnknown, "could not be determined"},
+		{"query error", dbserver.PostgreSQLReport{}, errors.NewStd("secret connection string"), health.StatusUnknown, "Unable to read"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			check := NewDatabaseServerVersionCheck(nil, func(context.Context) (dbserver.PostgreSQLReport, bool, error) {
+				return tt.report, true, tt.err
+			})
+			result := check.Run(t.Context())
+			assert.Equal(t, databaseServerVersionCheckName, result.Name)
+			assert.Equal(t, tt.status, result.Status)
+			assert.Contains(t, result.Message, tt.message)
+			assert.NotContains(t, result.Message, "secret connection string")
+			if tt.err == nil && tt.report.Version != "" {
+				assert.Equal(t, tt.report.VersionNum, result.Details["version_num"])
+				assert.Equal(t, tt.report.VersionSupported(), result.Details["supported"])
+			}
+		})
+	}
+}
+
+func TestDatabaseCharsetCheck_PostgreSQL(t *testing.T) {
+	tests := []struct {
+		name    string
+		report  dbserver.PostgreSQLReport
+		err     error
+		status  health.Status
+		message string
+	}{
+		{"utf8", dbserver.PostgreSQLReport{ServerEncoding: "UTF8", ClientEncoding: "UTF8"}, nil, health.StatusHealthy, "use UTF8"},
+		{"database not utf8", dbserver.PostgreSQLReport{ServerEncoding: "LATIN1", ClientEncoding: "UTF8"}, nil, health.StatusWarning, "explicit migration"},
+		{"client not utf8", dbserver.PostgreSQLReport{ServerEncoding: "UTF8", ClientEncoding: "LATIN1"}, nil, health.StatusWarning, "configure the client connection"},
+		{"missing encoding", dbserver.PostgreSQLReport{}, nil, health.StatusUnknown, "could not be determined"},
+		{"query error", dbserver.PostgreSQLReport{}, errors.NewStd("secret connection string"), health.StatusUnknown, "Unable to read"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			check := NewDatabaseCharsetCheck(nil, func(context.Context) (dbserver.PostgreSQLReport, bool, error) {
+				return tt.report, true, tt.err
+			})
+			result := check.Run(t.Context())
+			assert.Equal(t, databaseCharsetCheckName, result.Name)
+			assert.Equal(t, tt.status, result.Status)
+			assert.Contains(t, result.Message, tt.message)
+			assert.NotContains(t, result.Message, "secret connection string")
+			if tt.err == nil && tt.report.ServerEncoding != "" {
+				assert.Equal(t, tt.report.ServerEncoding, result.Details["server_encoding"])
+				assert.Equal(t, tt.report.ClientEncoding, result.Details["client_encoding"])
+			}
+		})
+	}
 }

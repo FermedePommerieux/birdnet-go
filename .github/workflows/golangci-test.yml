@@ -82,7 +82,7 @@ jobs:
         with:
           name: database-tests
           labels: run-db-tests run-full-ci
-          pattern: '^(internal/datastore/|internal/api/v2/imports/|internal/imports/|internal/testutil/containers/)|^(go\.mod|go\.sum|\.github/workflows/golangci-test\.yml)$'
+          pattern: '^(internal/datastore/|internal/api/v2/(imports|system)/|internal/analysis/database_(service|server_notice)|internal/health/checks/database_server|internal/imports/|internal/testutil/containers/)|^(go\.mod|go\.sum|\.github/workflows/golangci-test\.yml)$'
 
       # SQLite migration integration tests (./internal/datastore/v2/migration/...).
       - id: migration
@@ -469,6 +469,49 @@ jobs:
             rerun-integration*.txt
           if-no-files-found: warn
 
+  # PostgreSQL compatibility is based on the stable majors in this matrix.
+  postgresql-tests:
+    name: postgresql-tests (${{ matrix.major }})
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        major: [17, 18]
+    services:
+      postgres:
+        image: postgres:${{ matrix.major }}
+        env:
+          POSTGRES_PASSWORD: birdnet_ci
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd pg_isready --health-interval 3s
+          --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - uses: ./.github/actions/setup-tensorflow
+      - name: Exercise PostgreSQL storage and diagnostics
+        env:
+          BIRDNET_PG_TEST_PORT: ${{ job.services.postgres.ports[5432] }}
+          BIRDNET_PG_TEST_USER: birdnet_ci
+          BIRDNET_PG_TEST_PASSWORD: birdnet_ci
+          PGPASSWORD: birdnet_ci
+        run: |
+          psql -h 127.0.0.1 -p "$BIRDNET_PG_TEST_PORT" -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE birdnet_ci LOGIN CREATEDB PASSWORD 'birdnet_ci'"
+          # The manager tests use a real PostgreSQL server without the MySQL TestMain
+          # that is compiled into this package under the integration tag.
+          go test -tags noembed,skipfrontend -race -count=1 -run 'Postgres|PostgreSQL' ./internal/datastore/v2
+          go test -tags integration,noembed,skipfrontend -race -count=1 -run 'Postgres|PostgreSQL' \
+            ./internal/datastore/dbserver ./internal/datastore/v2only \
+            ./internal/health/checks ./internal/analysis ./internal/api/v2 ./internal/api/v2/system
+
   # MySQL-backed integration suites, run once per supported database server.
   # Debian 12 (bookworm) ships MariaDB 10.11 and Debian 13 (trixie) 11.8, the
   # servers Raspberry Pi OS and DietPi users get from their package manager.
@@ -584,7 +627,7 @@ jobs:
   test-report:
     name: test-report
     if: always()
-    needs: [changes, unit-tests, testcontainer-tests, database-tests, integration-tests]
+    needs: [changes, unit-tests, testcontainer-tests, database-tests, postgresql-tests, integration-tests]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -658,11 +701,12 @@ jobs:
             [ "$1" = "skipped" ] && [ "$CHANGES" = "success" ] && [ "$2" = "false" ] && return 0
             return 1
           }
-          SUMMARY="changes=$CHANGES, unit-tests=${{ needs.unit-tests.result }}, testcontainer-tests=${{ needs.testcontainer-tests.result }}, database-tests=${{ needs.database-tests.result }}, integration-tests=${{ needs.integration-tests.result }}"
+          SUMMARY="changes=$CHANGES, unit-tests=${{ needs.unit-tests.result }}, testcontainer-tests=${{ needs.testcontainer-tests.result }}, database-tests=${{ needs.database-tests.result }}, postgresql-tests=${{ needs.postgresql-tests.result }}, integration-tests=${{ needs.integration-tests.result }}"
           if [ "$CHANGES" != "success" ] \
             || [ '${{ needs.unit-tests.result }}' != "success" ] \
             || ! gated_ok '${{ needs.testcontainer-tests.result }}' '${{ needs.changes.outputs.containers }}' \
             || ! gated_ok '${{ needs.database-tests.result }}' '${{ needs.changes.outputs.database }}' \
+            || ! gated_ok '${{ needs.postgresql-tests.result }}' '${{ needs.changes.outputs.database }}' \
             || ! gated_ok '${{ needs.integration-tests.result }}' '${{ needs.changes.outputs.migration }}'; then
             echo "::error::An upstream test job did not succeed ($SUMMARY)"
             exit 1

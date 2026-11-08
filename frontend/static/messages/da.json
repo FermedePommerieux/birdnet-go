@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "Databaseserveren kræver opmærksomhed",
-        "serverAttentionMessage": "MySQL- eller MariaDB-serveren er ikke en understøttet version, eller databasen bruger ikke tegnsættet utf8mb4. Åbn System > Helbred for at se detaljer."
+        "serverAttentionMessage": "MySQL- eller MariaDB-serveren er ikke en understøttet version, eller databasen bruger ikke tegnsættet utf8mb4. Åbn System > Helbred for at se detaljer.",
+        "postgresHealthyTitle": "PostgreSQL-server",
+        "postgresHealthyMessage": "PostgreSQL {version} (versionsnummer {versionNum}); serverkodning {serverEncoding}; klientkodning {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (versionsnummer {versionNum}); serverkodning {serverEncoding}; klientkodning {clientEncoding}. Understøttede versioner: {supportedVersions}. Begge kodninger skal være UTF8. Se System > Helbred for detaljer."
       },
       "cleanup": {
         "completeTitle": "Oprydning af ældre database fuldført",

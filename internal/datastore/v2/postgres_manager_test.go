@@ -9,9 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tphakala/birdnet-go/internal/conf"
+	"github.com/tphakala/birdnet-go/internal/datastore/dbserver"
 	"github.com/tphakala/birdnet-go/internal/datastore/v2/entities"
 	"github.com/tphakala/birdnet-go/internal/datastore/v2/postgresqltest"
 	"github.com/tphakala/birdnet-go/internal/errors"
+	"gorm.io/gorm"
 )
 
 func TestPostgresManagerInitializeReopen(t *testing.T) {
@@ -110,4 +112,62 @@ func TestPostgresConcurrentInitialize(t *testing.T) {
 	for err := range results {
 		require.NoError(t, err)
 	}
+}
+
+func TestPostgresUnsupportedEncodingCreatesNoSchema(t *testing.T) {
+	cfg := postgresqltest.NewSettings(t)
+	m, err := NewPostgresManager(&cfg)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, m.Close()) }()
+	report, err := dbserver.ReadPostgreSQL(t.Context(), m.DB())
+	require.NoError(t, err)
+	assert.True(t, report.VersionSupported())
+	assert.True(t, report.EncodingSupported())
+
+	err = m.DB().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SET LOCAL client_encoding TO LATIN1").Error; err != nil {
+			return err
+		}
+		return initializePostgresSchema(tx)
+	})
+	require.ErrorContains(t, err, "UTF8 server and client encodings")
+
+	var tables int64
+	require.NoError(t, m.DB().Raw("SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'").Scan(&tables).Error)
+	assert.Zero(t, tables)
+
+	require.NoError(t, m.Initialize())
+	require.NoError(t, m.DB().Create(&entities.AppMetadata{Key: "preflight-restart", Value: "preserved"}).Error)
+	err = m.DB().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SET LOCAL client_encoding TO LATIN1").Error; err != nil {
+			return err
+		}
+		return initializePostgresSchema(tx)
+	})
+	require.ErrorContains(t, err, "UTF8 server and client encodings")
+	var preserved entities.AppMetadata
+	require.NoError(t, m.DB().First(&preserved, "key = ?", "preflight-restart").Error)
+	assert.Equal(t, "preserved", preserved.Value)
+}
+
+func TestValidatePostgresPreflightReportsAllFailedRequirements(t *testing.T) {
+	report := dbserver.PostgreSQLReport{
+		Version: "16.9", VersionNum: 160009,
+		ServerEncoding: "LATIN1", ClientEncoding: "SQL_ASCII",
+	}
+	err := validatePostgresPreflight(report)
+	require.Error(t, err)
+	for _, detail := range []string{
+		`server_version="16.9"`, "server_version_num=160009",
+		`server_encoding="LATIN1"`, `client_encoding="SQL_ASCII"`,
+		"version_supported=false", "encodings_supported=false",
+		"supported majors (17, 18)", "UTF8 server and client encodings",
+		"creating the database with UTF8 server encoding", "configuring UTF8 client encoding",
+	} {
+		require.ErrorContains(t, err, detail)
+	}
+	assert.NoError(t, validatePostgresPreflight(dbserver.PostgreSQLReport{
+		Version: "18.6", VersionNum: 180006,
+		ServerEncoding: "UTF8", ClientEncoding: "UTF8",
+	}))
 }

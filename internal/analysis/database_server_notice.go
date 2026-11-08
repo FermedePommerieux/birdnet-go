@@ -25,7 +25,13 @@ const (
 	// databaseServerNoticeMaxRetries bounds the waits for the notification service.
 	databaseServerNoticeMaxRetries = 4
 	// databaseServerCheckOperation is the operation field of the startup log lines.
-	databaseServerCheckOperation = "database_server_check"
+	databaseServerCheckOperation  = "database_server_check"
+	postgresNoticeRefreshInterval = 5 * time.Minute
+	postgresNoticeSignaturePrefix = "postgres|"
+	postgresHealthyTitleKey       = "notifications.content.database.postgresHealthyTitle"
+	postgresHealthyMessageKey     = "notifications.content.database.postgresHealthyMessage"
+	postgresAttentionMessageKey   = "notifications.content.database.postgresAttentionMessage"
+	postgresNoticeMetadataKey     = "database_server_postgresql"
 
 	// Reasons that make up the signature of the bell notice.
 	databaseServerReasonCharset     = "charset"
@@ -114,12 +120,15 @@ type databaseServerNotice struct {
 
 	// mu guards the fields below and serializes reconcile. Lock order: mu, then
 	// the latch's own lock.
-	mu      sync.Mutex
-	latch   notification.PersistentNotice
-	sig     string
-	timer   *time.Timer
-	retries int
-	stopped bool
+	mu           sync.Mutex
+	latch        notification.PersistentNotice
+	sig          string
+	build        func() *notification.Notification
+	timer        *time.Timer
+	refreshTimer *time.Timer
+	retries      int
+	stopped      bool
+	pruned       bool
 }
 
 // newDatabaseServerNotice creates the notice runner.
@@ -144,10 +153,93 @@ func (n *databaseServerNotice) report(r *databaseServerReport) {
 	reasons := r.reasons()
 	n.mu.Lock()
 	n.sig = strings.Join(reasons, databaseServerReasonSeparator)
+	n.build = newDatabaseServerNotification
 	n.mu.Unlock()
 	if len(reasons) > 0 {
 		n.reconcile()
 	}
+}
+
+// reportPostgreSQL records the actual settings and keeps one bell entry for the
+// current server state. An incompatible server replaces the informational entry.
+func (n *databaseServerNotice) reportPostgreSQL(r dbserver.PostgreSQLReport) {
+	sig := fmt.Sprintf("%s%s|%d|%s|%s|%t", postgresNoticeSignaturePrefix,
+		r.Version, r.VersionNum, r.ServerEncoding, r.ClientEncoding,
+		!r.VersionSupported() || !r.EncodingSupported())
+	n.mu.Lock()
+	unchanged := n.sig == sig
+	n.mu.Unlock()
+	if unchanged {
+		n.reconcile()
+		return
+	}
+	n.log.Info("PostgreSQL database server",
+		logger.String("version", r.Version),
+		logger.Int("version_num", r.VersionNum),
+		logger.String("server_encoding", r.ServerEncoding),
+		logger.String("client_encoding", r.ClientEncoding),
+		logger.String("operation", databaseServerCheckOperation))
+	var problems []string
+	if !r.VersionSupported() {
+		problems = append(problems, fmt.Sprintf("version %q is unsupported; use PostgreSQL %s", r.Version, dbserver.PostgreSQLSupportedVersions))
+	}
+	if !r.EncodingSupported() {
+		problems = append(problems, fmt.Sprintf("server encoding %q and client encoding %q require UTF8; configure both as UTF8", r.ServerEncoding, r.ClientEncoding))
+	}
+	for _, problem := range problems {
+		n.log.Warn("PostgreSQL server needs attention", logger.String("reason", problem), logger.String("operation", databaseServerCheckOperation))
+	}
+	message := fmt.Sprintf("PostgreSQL %s (server version number %d), server encoding %s, client encoding %s.",
+		r.Version, r.VersionNum, r.ServerEncoding, r.ClientEncoding)
+	params := map[string]any{
+		"version": r.Version, "versionNum": r.VersionNum,
+		"serverEncoding": r.ServerEncoding, "clientEncoding": r.ClientEncoding,
+		"supportedVersions": dbserver.PostgreSQLSupportedVersions,
+	}
+	if len(problems) > 0 {
+		message += " " + strings.Join(problems, "; ") + ". Open System > Health for details."
+	}
+	n.mu.Lock()
+	n.sig = sig
+	n.build = func() *notification.Notification {
+		if len(problems) > 0 {
+			return notification.NewNotification(notification.TypeWarning, notification.PriorityMedium,
+				"PostgreSQL server needs attention", message).
+				WithComponent(notification.ComponentDatabase).
+				WithMetadata(postgresNoticeMetadataKey, true).
+				WithTitleKey(notification.MsgDatabaseServerAttentionTitle, nil).
+				WithMessageKey(postgresAttentionMessageKey, params).
+				WithDeliveryTarget(notification.DeliveryTargetBell)
+		}
+		return notification.NewNotification(notification.TypeInfo, notification.PriorityLow,
+			"PostgreSQL server", message).
+			WithComponent(notification.ComponentDatabase).
+			WithMetadata(postgresNoticeMetadataKey, true).
+			WithTitleKey(postgresHealthyTitleKey, nil).
+			WithMessageKey(postgresHealthyMessageKey, params).
+			WithDeliveryTarget(notification.DeliveryTargetBell)
+	}
+	n.mu.Unlock()
+	n.reconcile()
+}
+
+// pollPostgreSQL refreshes the one-shot state without writing to the database.
+// A failed read logs the cause and leaves the last known notice in place.
+func (n *databaseServerNotice) pollPostgreSQL(db *gorm.DB) {
+	ctx, cancel := context.WithTimeout(context.Background(), databaseServerProbeTimeout)
+	report, err := dbserver.ReadPostgreSQL(ctx, db)
+	cancel()
+	if err != nil {
+		n.log.Warn("could not refresh PostgreSQL server settings", logger.Error(err),
+			logger.String("operation", databaseServerCheckOperation))
+	} else {
+		n.reportPostgreSQL(report)
+	}
+	n.mu.Lock()
+	if !n.stopped {
+		n.refreshTimer = time.AfterFunc(postgresNoticeRefreshInterval, func() { n.pollPostgreSQL(db) })
+	}
+	n.mu.Unlock()
 }
 
 // logReport writes the INFO line and a WARN line for each reason.
@@ -205,12 +297,42 @@ func (n *databaseServerNotice) reconcile() {
 	}
 	n.retries = 0
 	if err := n.latch.Reconcile(svc, func() (string, func() *notification.Notification) {
-		return n.sig, newDatabaseServerNotification
+		return n.sig, n.build
 	}); err != nil {
 		n.log.Warn("failed to raise the database server notification",
 			logger.Error(err),
 			logger.String("operation", databaseServerCheckOperation))
+	} else if strings.HasPrefix(n.sig, postgresNoticeSignaturePrefix) && !n.pruned {
+		n.pruned = n.prunePreviousPostgreSQLNotices(svc)
 	}
+}
+
+// prunePreviousPostgreSQLNotices clears a PostgreSQL notice left by an earlier
+// DatabaseService in this process. The notification store is a singleton and
+// can outlive service restarts; its metadata identifies only our own entries.
+func (n *databaseServerNotice) prunePreviousPostgreSQLNotices(svc notification.NoticeService) bool {
+	lister, ok := svc.(interface {
+		List(*notification.FilterOptions) ([]*notification.Notification, error)
+	})
+	if !ok {
+		return true
+	}
+	items, err := lister.List(&notification.FilterOptions{Component: notification.ComponentDatabase})
+	if err != nil {
+		n.log.Warn("could not list prior PostgreSQL notices", logger.Error(err))
+		return false
+	}
+	current := n.latch.ID()
+	for _, item := range items {
+		if item.ID == current || item.Metadata[postgresNoticeMetadataKey] != true {
+			continue
+		}
+		if err := svc.Delete(item.ID); err != nil {
+			n.log.Warn("could not remove prior PostgreSQL notice", logger.Error(err))
+			return false
+		}
+	}
+	return true
 }
 
 // armServiceRetryLocked schedules another reconcile while the notification
@@ -250,6 +372,10 @@ func (n *databaseServerNotice) stop() {
 	if n.timer != nil {
 		n.timer.Stop()
 		n.timer = nil
+	}
+	if n.refreshTimer != nil {
+		n.refreshTimer.Stop()
+		n.refreshTimer = nil
 	}
 	n.latch.Stop()
 }

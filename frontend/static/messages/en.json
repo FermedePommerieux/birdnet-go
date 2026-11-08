@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "Database server needs attention",
-        "serverAttentionMessage": "The MySQL or MariaDB server is not a supported release, or the database does not use the utf8mb4 character set. Open System > Health for details."
+        "serverAttentionMessage": "The MySQL or MariaDB server is not a supported release, or the database does not use the utf8mb4 character set. Open System > Health for details.",
+        "postgresHealthyTitle": "PostgreSQL server",
+        "postgresHealthyMessage": "PostgreSQL {version} (server version number {versionNum}); server encoding {serverEncoding}; client encoding {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (server version number {versionNum}); server encoding {serverEncoding}; client encoding {clientEncoding}. Supported versions: {supportedVersions}. Both encodings must be UTF8. Open System > Health for details."
       },
       "cleanup": {
         "completeTitle": "Legacy Database Cleanup Complete",

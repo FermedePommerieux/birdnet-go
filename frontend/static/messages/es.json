@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "El servidor de base de datos necesita atención",
-        "serverAttentionMessage": "El servidor MySQL o MariaDB no es una versión admitida, o la base de datos no usa el juego de caracteres utf8mb4. Abra Sistema > Salud para ver los detalles."
+        "serverAttentionMessage": "El servidor MySQL o MariaDB no es una versión admitida, o la base de datos no usa el juego de caracteres utf8mb4. Abra Sistema > Salud para ver los detalles.",
+        "postgresHealthyTitle": "Servidor PostgreSQL",
+        "postgresHealthyMessage": "PostgreSQL {version} (número de versión {versionNum}); codificación del servidor {serverEncoding}; codificación del cliente {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (número de versión {versionNum}); codificación del servidor {serverEncoding}; codificación del cliente {clientEncoding}. Versiones admitidas: {supportedVersions}. Ambas codificaciones deben ser UTF8. Consulte Sistema > Salud para obtener más información."
       },
       "cleanup": {
         "completeTitle": "Limpieza de base de datos antigua completada",

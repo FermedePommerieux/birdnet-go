@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "Datubāzes serverim nepieciešama uzmanība",
-        "serverAttentionMessage": "MySQL vai MariaDB servera versija netiek atbalstīta, vai arī datubāze neizmanto rakstzīmju kopu utf8mb4. Sīkāku informāciju skatiet sadaļā Sistēma > Sistēmas veselība."
+        "serverAttentionMessage": "MySQL vai MariaDB servera versija netiek atbalstīta, vai arī datubāze neizmanto rakstzīmju kopu utf8mb4. Sīkāku informāciju skatiet sadaļā Sistēma > Sistēmas veselība.",
+        "postgresHealthyTitle": "PostgreSQL serveris",
+        "postgresHealthyMessage": "PostgreSQL {version} (versijas numurs {versionNum}); servera kodējums {serverEncoding}; klienta kodējums {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (versijas numurs {versionNum}); servera kodējums {serverEncoding}; klienta kodējums {clientEncoding}. Atbalstītās versijas: {supportedVersions}. Abiem kodējumiem jābūt UTF8. Plašāku informāciju skatiet sadaļā Sistēma > Sistēmas veselība."
       },
       "cleanup": {
         "completeTitle": "Mantotās datubāzes tīrīšana pabeigta",

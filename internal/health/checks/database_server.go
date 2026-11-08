@@ -15,9 +15,8 @@ const (
 	databaseServerVersionCheckName = "database_server_version"
 	// databaseCharsetCheckName is the check ID of the character set check.
 	databaseCharsetCheckName = "database_charset"
-	// databaseServerNotApplicable is the message of both checks on a database
-	// that is not MySQL or MariaDB.
-	databaseServerNotApplicable = "Not applicable: the database is not MySQL or MariaDB"
+	// databaseServerNotApplicable is the message of both checks on SQLite.
+	databaseServerNotApplicable = "Not applicable: SQLite has no database server"
 	// maxNamedCharsetTables bounds how many tables the charset message names.
 	maxNamedCharsetTables = 10
 	// databaseCharsetTablesOKFormat is the message when every character column is
@@ -34,16 +33,21 @@ type DatabaseServerProbe func(ctx context.Context) (raw string, applicable bool,
 // the same applicable contract as DatabaseServerProbe.
 type DatabaseCharsetProbe func(ctx context.Context) (report dbserver.CharsetReport, applicable bool, err error)
 
-// DatabaseServerVersionCheck reports whether the MySQL or MariaDB server is a
+// DatabasePostgreSQLProbe reads PostgreSQL server metadata for either check.
+// applicable is false for other database dialects.
+type DatabasePostgreSQLProbe func(ctx context.Context) (report dbserver.PostgreSQLReport, applicable bool, err error)
+
+// DatabaseServerVersionCheck reports whether the SQL server is a
 // supported release. It never reports critical: an old server that works is a
 // warning, not an outage.
 type DatabaseServerVersionCheck struct {
-	probe DatabaseServerProbe
+	probe         DatabaseServerProbe
+	postgresProbe DatabasePostgreSQLProbe
 }
 
 // NewDatabaseServerVersionCheck creates the check. A nil probe skips it.
-func NewDatabaseServerVersionCheck(probe DatabaseServerProbe) *DatabaseServerVersionCheck {
-	return &DatabaseServerVersionCheck{probe: probe}
+func NewDatabaseServerVersionCheck(probe DatabaseServerProbe, postgresProbe DatabasePostgreSQLProbe) *DatabaseServerVersionCheck {
+	return &DatabaseServerVersionCheck{probe: probe, postgresProbe: postgresProbe}
 }
 
 // Name returns the check identifier.
@@ -55,6 +59,12 @@ func (c *DatabaseServerVersionCheck) Category() health.Category { return health.
 // Run reads the server version and classifies it.
 func (c *DatabaseServerVersionCheck) Run(ctx context.Context) health.Result {
 	start := time.Now()
+	if c.postgresProbe != nil {
+		report, applicable, err := c.postgresProbe(ctx)
+		if applicable {
+			return postgresVersionResult(c.Name(), c.Category(), start, report, err)
+		}
+	}
 	if c.probe == nil {
 		return databaseServerResult(c.Name(), c.Category(), start, health.StatusSkipped, databaseServerNotApplicable, nil)
 	}
@@ -81,6 +91,30 @@ func (c *DatabaseServerVersionCheck) Run(ctx context.Context) health.Result {
 	return databaseServerResult(c.Name(), c.Category(), start, status, msg, details)
 }
 
+func postgresVersionResult(name string, category health.Category, start time.Time, report dbserver.PostgreSQLReport, err error) health.Result {
+	if err != nil {
+		return databaseServerResult(name, category, start, health.StatusUnknown,
+			"Unable to read the PostgreSQL server version", nil)
+	}
+	if report.Version == "" || report.VersionNum == 0 {
+		return databaseServerResult(name, category, start, health.StatusUnknown,
+			"The PostgreSQL server version could not be determined", nil)
+	}
+	supported := report.VersionSupported()
+	details := map[string]any{
+		"vendor": "postgresql", "version": report.Version,
+		"version_num": report.VersionNum, "supported": supported,
+	}
+	if supported {
+		details["support"] = "supported"
+		return databaseServerResult(name, category, start, health.StatusHealthy,
+			fmt.Sprintf("PostgreSQL %s is a supported release", report.Version), details)
+	}
+	details["support"] = "unsupported"
+	return databaseServerResult(name, category, start, health.StatusWarning,
+		fmt.Sprintf("PostgreSQL %s is not a supported release. Use a tested stable PostgreSQL major (%s).", report.Version, dbserver.PostgreSQLSupportedVersions), details)
+}
+
 // describeServerAssessment maps an assessment to a health status and message.
 func describeServerAssessment(a *dbserver.Assessment) (status health.Status, message string) {
 	name := a.Version.Name()
@@ -98,14 +132,15 @@ func describeServerAssessment(a *dbserver.Assessment) (status health.Status, mes
 	return health.StatusUnknown, "Unknown support level"
 }
 
-// DatabaseCharsetCheck reports whether the schema and its tables use utf8mb4.
+// DatabaseCharsetCheck reports the configured server and client encodings.
 type DatabaseCharsetCheck struct {
-	probe DatabaseCharsetProbe
+	probe         DatabaseCharsetProbe
+	postgresProbe DatabasePostgreSQLProbe
 }
 
 // NewDatabaseCharsetCheck creates the check. A nil probe skips it.
-func NewDatabaseCharsetCheck(probe DatabaseCharsetProbe) *DatabaseCharsetCheck {
-	return &DatabaseCharsetCheck{probe: probe}
+func NewDatabaseCharsetCheck(probe DatabaseCharsetProbe, postgresProbe DatabasePostgreSQLProbe) *DatabaseCharsetCheck {
+	return &DatabaseCharsetCheck{probe: probe, postgresProbe: postgresProbe}
 }
 
 // Name returns the check identifier.
@@ -117,6 +152,12 @@ func (c *DatabaseCharsetCheck) Category() health.Category { return health.Catego
 // Run reads the character sets of the schema and its tables.
 func (c *DatabaseCharsetCheck) Run(ctx context.Context) health.Result {
 	start := time.Now()
+	if c.postgresProbe != nil {
+		report, applicable, err := c.postgresProbe(ctx)
+		if applicable {
+			return postgresEncodingResult(c.Name(), c.Category(), start, report, err)
+		}
+	}
 	if c.probe == nil {
 		return databaseServerResult(c.Name(), c.Category(), start, health.StatusSkipped, databaseServerNotApplicable, nil)
 	}
@@ -164,6 +205,27 @@ func (c *DatabaseCharsetCheck) Run(ctx context.Context) health.Result {
 	}
 	msg.WriteString(". Text outside that character set, such as emoji or some scripts, is rejected or stored incorrectly.")
 	return databaseServerResult(c.Name(), c.Category(), start, health.StatusWarning, msg.String(), details)
+}
+
+func postgresEncodingResult(name string, category health.Category, start time.Time, report dbserver.PostgreSQLReport, err error) health.Result {
+	if err != nil {
+		return databaseServerResult(name, category, start, health.StatusUnknown,
+			"Unable to read the PostgreSQL database encoding", nil)
+	}
+	if report.ServerEncoding == "" || report.ClientEncoding == "" {
+		return databaseServerResult(name, category, start, health.StatusUnknown,
+			"The PostgreSQL server or client encoding could not be determined", nil)
+	}
+	details := map[string]any{
+		"vendor": "postgresql", "server_encoding": report.ServerEncoding,
+		"client_encoding": report.ClientEncoding,
+	}
+	if report.EncodingSupported() {
+		return databaseServerResult(name, category, start, health.StatusHealthy,
+			"The PostgreSQL database and client use UTF8 encoding", details)
+	}
+	return databaseServerResult(name, category, start, health.StatusWarning,
+		fmt.Sprintf("PostgreSQL database encoding is %s and client encoding is %s. Use a UTF8 database and configure the client connection for UTF8; changing an existing database encoding requires an explicit migration.", report.ServerEncoding, report.ClientEncoding), details)
 }
 
 // databaseServerResult builds a Result for the two database server checks.

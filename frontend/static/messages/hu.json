@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "Az adatbázis-kiszolgáló figyelmet igényel",
-        "serverAttentionMessage": "A MySQL vagy MariaDB kiszolgáló nem támogatott kiadás, vagy az adatbázis nem az utf8mb4 karakterkészletet használja. A részletekért nyissa meg a Rendszer > Rendszerállapot oldalt."
+        "serverAttentionMessage": "A MySQL vagy MariaDB kiszolgáló nem támogatott kiadás, vagy az adatbázis nem az utf8mb4 karakterkészletet használja. A részletekért nyissa meg a Rendszer > Rendszerállapot oldalt.",
+        "postgresHealthyTitle": "PostgreSQL-kiszolgáló",
+        "postgresHealthyMessage": "PostgreSQL {version} (verziószám {versionNum}); kiszolgáló kódolása {serverEncoding}; kliens kódolása {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (verziószám {versionNum}); kiszolgáló kódolása {serverEncoding}; kliens kódolása {clientEncoding}. Támogatott verziók: {supportedVersions}. Mindkét kódolásnak UTF8-nak kell lennie. Részletek: Rendszer > Rendszerállapot."
       },
       "cleanup": {
         "completeTitle": "Régi adatbázis karbantartás befejezve",

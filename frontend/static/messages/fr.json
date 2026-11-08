@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "Le serveur de base de données demande votre attention",
-        "serverAttentionMessage": "Le serveur MySQL ou MariaDB n'est pas une version prise en charge, ou la base de données n'utilise pas le jeu de caractères utf8mb4. Ouvrez Système > Santé pour plus de détails."
+        "serverAttentionMessage": "Le serveur MySQL ou MariaDB n'est pas une version prise en charge, ou la base de données n'utilise pas le jeu de caractères utf8mb4. Ouvrez Système > Santé pour plus de détails.",
+        "postgresHealthyTitle": "Serveur PostgreSQL",
+        "postgresHealthyMessage": "PostgreSQL {version} (numéro de version {versionNum}) ; encodage du serveur {serverEncoding} ; encodage du client {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (numéro de version {versionNum}) ; encodage du serveur {serverEncoding} ; encodage du client {clientEncoding}. Versions prises en charge : {supportedVersions}. Les deux encodages doivent être UTF8. Consultez Système > Santé pour plus de détails."
       },
       "cleanup": {
         "completeTitle": "Nettoyage de l'ancienne base de données terminé",

@@ -117,6 +117,28 @@ func (c *Handler) mysqlServerDB() *gorm.DB {
 	return mgr.DB()
 }
 
+// postgresServerProbe reads the active PostgreSQL connection for diagnostics.
+// The configured but unavailable case remains applicable so the checks report
+// unknown rather than incorrectly skipping a configured server.
+func (c *Handler) postgresServerProbe(ctx context.Context) (dbserver.PostgreSQLReport, bool, error) {
+	mgr := c.V2Manager
+	if mgr == nil {
+		if c.CurrentSettings().Output.PostgreSQL.Enabled {
+			return dbserver.PostgreSQLReport{}, true, errDatabaseSizeNoPostgresHandle
+		}
+		return dbserver.PostgreSQLReport{}, false, nil
+	}
+	if datastoreV2.DialectName(mgr) != datastoreV2.DialectPostgres {
+		return dbserver.PostgreSQLReport{}, false, nil
+	}
+	db := mgr.DB()
+	if db == nil {
+		return dbserver.PostgreSQLReport{}, true, errDatabaseSizeNoPostgresHandle
+	}
+	report, err := dbserver.ReadPostgreSQL(ctx, db)
+	return report, true, err
+}
+
 // serverDatabaseSize uses the live server handle and tells the health check
 // whether a local SQLite file is applicable.
 func (c *Handler) serverDatabaseSize(ctx context.Context) (size int64, server bool, err error) {
@@ -284,7 +306,7 @@ func (c *Handler) registerHealthChecks() {
 			}
 			raw, err := dbserver.QueryVersion(ctx, db)
 			return raw, true, err
-		}),
+		}, c.postgresServerProbe),
 		checks.NewDatabaseCharsetCheck(func(ctx context.Context) (dbserver.CharsetReport, bool, error) {
 			db := c.mysqlServerDB()
 			if db == nil {
@@ -292,7 +314,7 @@ func (c *Handler) registerHealthChecks() {
 			}
 			report, err := dbserver.QueryCharset(ctx, db)
 			return report, true, err
-		}),
+		}, c.postgresServerProbe),
 
 		// Network checks
 		checks.NewMQTTCheck(

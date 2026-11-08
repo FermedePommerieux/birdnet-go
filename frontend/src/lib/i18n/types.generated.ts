@@ -399,6 +399,9 @@ export type TranslationKey =
   | 'notifications.content.migration.legacyRestartRequiredMessage'
   | 'notifications.content.database.serverAttentionTitle'
   | 'notifications.content.database.serverAttentionMessage'
+  | 'notifications.content.database.postgresHealthyTitle'
+  | 'notifications.content.database.postgresHealthyMessage' // params: version, versionNum, serverEncoding, clientEncoding
+  | 'notifications.content.database.postgresAttentionMessage' // params: version, versionNum, serverEncoding, clientEncoding, supportedVersions
   | 'notifications.content.cleanup.completeTitle'
   | 'notifications.content.cleanup.completeMessage' // params: space
   | 'notifications.content.cleanup.failedTitle'
@@ -4478,6 +4481,19 @@ export type TranslationParams = {
   'notifications.content.settings.equalizerFiltersSkipped': {
     count: string | number;
     sources: string | number;
+  };
+  'notifications.content.database.postgresHealthyMessage': {
+    version: string | number;
+    versionNum: string | number;
+    serverEncoding: string | number;
+    clientEncoding: string | number;
+  };
+  'notifications.content.database.postgresAttentionMessage': {
+    version: string | number;
+    versionNum: string | number;
+    serverEncoding: string | number;
+    clientEncoding: string | number;
+    supportedVersions: string | number;
   };
   'notifications.content.cleanup.completeMessage': { space: string | number };
   'notifications.content.buffer.overloadMessage': {

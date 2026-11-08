@@ -462,7 +462,10 @@
       },
       "database": {
         "serverAttentionTitle": "Der Datenbankserver benötigt Aufmerksamkeit",
-        "serverAttentionMessage": "Der MySQL- oder MariaDB-Server ist keine unterstützte Version, oder die Datenbank verwendet nicht den Zeichensatz utf8mb4. Details finden Sie unter System > Status."
+        "serverAttentionMessage": "Der MySQL- oder MariaDB-Server ist keine unterstützte Version, oder die Datenbank verwendet nicht den Zeichensatz utf8mb4. Details finden Sie unter System > Status.",
+        "postgresHealthyTitle": "PostgreSQL-Server",
+        "postgresHealthyMessage": "PostgreSQL {version} (Versionsnummer {versionNum}); Serverkodierung {serverEncoding}; Clientkodierung {clientEncoding}.",
+        "postgresAttentionMessage": "PostgreSQL {version} (Versionsnummer {versionNum}); Serverkodierung {serverEncoding}; Clientkodierung {clientEncoding}. Unterstützte Versionen: {supportedVersions}. Beide Kodierungen müssen UTF8 sein. Weitere Informationen unter System > Zustand."
       },
       "cleanup": {
         "completeTitle": "Bereinigung der alten Datenbank abgeschlossen",

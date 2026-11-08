@@ -66,6 +66,45 @@ func TestRegisterHealthChecks_DatabaseServerChecksSkippedWithoutMySQL(t *testing
 	assert.Equal(t, health.StatusSkipped, statuses["database_charset"])
 }
 
+func TestRegisterHealthChecks_PostgreSQLConfiguredWithoutManager(t *testing.T) {
+	h := &Handler{Core: apitest.NewCore(t, apitest.WithSettingsFunc(func(s *conf.Settings) {
+		s.Output.PostgreSQL.Enabled = true
+	}))}
+	h.DS = nil
+	h.healthRegistry = health.NewRegistry()
+	h.registerHealthChecks()
+
+	statuses := map[string]health.Result{}
+	for _, result := range h.healthRegistry.RunCategory(t.Context(), health.CategoryDatabase) {
+		statuses[result.Name] = result
+	}
+	for _, name := range []string{"database_server_version", "database_charset"} {
+		result, ok := statuses[name]
+		require.True(t, ok)
+		assert.Equal(t, health.StatusUnknown, result.Status)
+		assert.Contains(t, result.Message, "PostgreSQL")
+		assert.NotContains(t, result.Message, "connection string")
+	}
+}
+
+func TestPostgresServerProbe_DialectAndMissingHandle(t *testing.T) {
+	h := &Handler{Core: apitest.NewCore(t)}
+	_, applicable, err := h.postgresServerProbe(t.Context())
+	require.NoError(t, err)
+	assert.False(t, applicable)
+
+	h.V2Manager = dialectManagerStub{mysql: true, db: &gorm.DB{}}
+	_, applicable, err = h.postgresServerProbe(t.Context())
+	require.NoError(t, err)
+	assert.False(t, applicable)
+
+	h.V2Manager = &datastoreV2.PostgresManager{}
+	_, applicable, err = h.postgresServerProbe(t.Context())
+	require.Error(t, err)
+	assert.True(t, applicable)
+	assert.ErrorIs(t, err, errDatabaseSizeNoPostgresHandle)
+}
+
 const (
 	// schemaSizeTestDriver is a SQLite driver whose connections emulate the parts
 	// of MySQL that the schema size query uses: an attached information_schema
