@@ -186,6 +186,26 @@ Source: BSD-2-Clause
 License: https://github.com/invopop/jsonschema/blob/v0.14.0/COPYING
 Source: MIT
 
+### github.com/jackc/pgpassfile
+
+License: https://github.com/jackc/pgpassfile/blob/v1.0.0/LICENSE
+Source: MIT
+
+### github.com/jackc/pgservicefile
+
+License: https://github.com/jackc/pgservicefile/blob/5a60cdf6a761/LICENSE
+Source: MIT
+
+### github.com/jackc/pgx/v5
+
+License: https://github.com/jackc/pgx/blob/v5.12.0/LICENSE
+Source: MIT
+
+### github.com/jackc/puddle/v2
+
+License: https://github.com/jackc/puddle/blob/v2.2.3/LICENSE
+Source: MIT
+
 ### github.com/jinzhu/inflection
 
 License: https://github.com/jinzhu/inflection/blob/v1.0.0/LICENSE
@@ -619,6 +639,11 @@ Source: MIT
 ### gorm.io/driver/mysql
 
 License: https://github.com/go-gorm/mysql/blob/v1.6.0/License
+Source: MIT
+
+### gorm.io/driver/postgres
+
+License: https://github.com/go-gorm/postgres/blob/v1.6.0/License
 Source: MIT
 
 ### gorm.io/driver/sqlite
