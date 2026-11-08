@@ -35,17 +35,20 @@ const output: OutputSettings = {
 };
 
 function setOutput(value: OutputSettings) {
-  const formData = {
-    main: { name: 'TestNode' },
-    output: structuredClone(value),
-  } as SettingsFormData;
-  settingsStore.update(state => ({
-    ...state,
-    formData,
-    originalData: structuredClone(formData),
-    isLoading: false,
-    isSaving: false,
-  }));
+  settingsStore.update(state => {
+    const formData: SettingsFormData = {
+      ...state.formData,
+      main: { name: 'TestNode' },
+      output: globalThis.structuredClone(value),
+    };
+    return {
+      ...state,
+      formData,
+      originalData: globalThis.structuredClone(formData),
+      isLoading: false,
+      isSaving: false,
+    };
+  });
 }
 
 describe('MainSettingsPage database settings', () => {
@@ -70,9 +73,14 @@ describe('MainSettingsPage database settings', () => {
     expect(document.getElementById('postgresql-host')).toHaveValue('pg.example');
     expect(document.getElementById('postgresql-ssl-root-cert')).toHaveValue('/certs/ca.pem');
 
-    await fireEvent.change(document.getElementById('postgresql-host')!, {
-      target: { value: 'new-pg.example' },
-    });
+    await fireEvent.change(
+      screen.getByRole('textbox', {
+        name: 'settings.main.sections.database.postgresql.host.label',
+      }),
+      {
+        target: { value: 'new-pg.example' },
+      }
+    );
     expect(get(settingsStore).formData.output?.postgresql?.host).toBe('new-pg.example');
     expect(get(settingsStore).formData.output?.mysql.host).toBe('mysql.example');
 
@@ -93,20 +101,22 @@ describe('MainSettingsPage database settings', () => {
     await fireEvent.click(screen.getByRole('option', { name: /MySQL/i }));
 
     await waitFor(() => {
-      const changed = get(settingsStore).formData.output!;
-      expect(changed.mysql.enabled).toBe(true);
-      expect(changed.postgresql?.enabled).toBe(false);
-      expect(changed.sqlite.enabled).toBe(false);
-      expect(changed.postgresql?.host).toBe('pg.example');
-      expect(changed.postgresql?.password).toBe('pgpass');
+      const changed = get(settingsStore).formData.output;
+      expect(changed?.mysql.enabled).toBe(true);
+      expect(changed?.postgresql?.enabled).toBe(false);
+      expect(changed?.sqlite.enabled).toBe(false);
+      expect(changed?.postgresql?.host).toBe('pg.example');
+      expect(changed?.postgresql?.password).toBe('pgpass');
     });
   });
 
   it('allows choosing PostgreSQL from SQLite', async () => {
+    const postgresql = output.postgresql;
+    if (!postgresql) throw new Error('PostgreSQL fixture is missing');
     setOutput({
       ...output,
       sqlite: { ...output.sqlite, enabled: true },
-      postgresql: { ...output.postgresql!, enabled: false },
+      postgresql: { ...postgresql, enabled: false },
     });
     await openDatabaseTab();
     await fireEvent.click(
@@ -115,11 +125,11 @@ describe('MainSettingsPage database settings', () => {
     await fireEvent.click(screen.getByRole('option', { name: /PostgreSQL/i }));
 
     await waitFor(() => {
-      const changed = get(settingsStore).formData.output!;
-      expect(changed.postgresql?.enabled).toBe(true);
-      expect(changed.sqlite.enabled).toBe(false);
-      expect(changed.mysql.enabled).toBe(false);
-      expect(changed.postgresql?.host).toBe('pg.example');
+      const changed = get(settingsStore).formData.output;
+      expect(changed?.postgresql?.enabled).toBe(true);
+      expect(changed?.sqlite.enabled).toBe(false);
+      expect(changed?.mysql.enabled).toBe(false);
+      expect(changed?.postgresql?.host).toBe('pg.example');
     });
   });
 });
