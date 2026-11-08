@@ -11,11 +11,14 @@ const (
 	// repoBlobBase is the prefix for linking to a file in the repository's
 	// default branch. Relative links that point at repo files (not wiki pages)
 	// are rewritten to absolute blob URLs so they resolve on the wiki.
-	repoBlobBase = "https://github.com/tphakala/birdnet-go/blob/main/"
+	repoBlobBase = "https://github.com/FermedePommerieux/birdnet-go/blob/main/"
 
 	// wikiURLPrefix is the public base URL of the project wiki. Absolute links
 	// that point back at our own wiki are normalized to relative page slugs.
-	wikiURLPrefix = "https://github.com/tphakala/birdnet-go/wiki/"
+	wikiURLPrefix = "https://github.com/FermedePommerieux/birdnet-go/wiki/"
+	// Source pages may still contain upstream wiki links; normalize those to
+	// local slugs so the published page stays within this fork's wiki.
+	upstreamWikiURLPrefix = "https://github.com/tphakala/birdnet-go/wiki/"
 
 	// bannerMarker is an HTML comment that flags a page as managed by the sync.
 	// It is also used to make banner injection idempotent.
@@ -190,6 +193,8 @@ func resolveURL(u, sourceDir string, idx map[string]string) string {
 		return u // same-page anchor
 	case strings.HasPrefix(u, wikiURLPrefix):
 		return resolveWikiURL(u[len(wikiURLPrefix):], idx)
+	case strings.HasPrefix(u, upstreamWikiURLPrefix):
+		return resolveWikiURL(u[len(upstreamWikiURLPrefix):], idx)
 	case isExternalURL(u):
 		return u
 	default:

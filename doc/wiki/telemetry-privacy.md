@@ -271,7 +271,7 @@ The BirdNET-Go development team regularly reviews:
 
 For questions about privacy and data collection:
 
-- **GitHub Issues**: [BirdNET-Go Privacy Issues](https://github.com/tphakala/birdnet-go/issues)
+- **GitHub Issues**: [BirdNET-Go Privacy Issues](https://github.com/FermedePommerieux/birdnet-go/issues)
 - **Email**: Include "Privacy" in the subject line for faster routing
 
 ### Data Protection Officer

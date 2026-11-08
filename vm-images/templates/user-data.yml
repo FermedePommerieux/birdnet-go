@@ -69,7 +69,7 @@ write_files:
       ║  • View logs: sudo journalctl -u birdnet-go -f                      ║
       ║  • Web interface: http://$(hostname -I | awk '{print $1}'):8080     ║
       ║                                                                      ║
-      ║  📚 Documentation: https://github.com/tphakala/birdnet-go           ║
+      ║  📚 Documentation: https://github.com/FermedePommerieux/birdnet-go           ║
       ║                                                                      ║
       ╚══════════════════════════════════════════════════════════════════════╝
       

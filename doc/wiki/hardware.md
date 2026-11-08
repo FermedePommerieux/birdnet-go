@@ -216,7 +216,7 @@ Bat echolocation calls are ultrasonic, typically ranging from 20kHz to over 120k
 ## Additional Resources
 
 - **Community Recommendations:**
-  - Join the [BirdNET-Go GitHub Discussions](https://github.com/tphakala/birdnet-go/discussions) for user experiences with different hardware setups
+  - Join the [BirdNET-Go GitHub Discussions](https://github.com/FermedePommerieux/birdnet-go/discussions) for user experiences with different hardware setups
   - The [BirdWeather Community](https://www.birdweather.com/) offers additional insights on microphone selection and placement
 
 - **Testing Your Setup:**

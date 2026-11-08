@@ -42,8 +42,8 @@ const manifestReleaseTag = "manifest"
 // buildOptions configures manifest generation.
 type buildOptions struct {
 	Repo           string    // owner/repo
-	GHCRImage      string    // e.g. ghcr.io/tphakala/birdnet-go
-	DockerHubImage string    // e.g. tphakala/birdnet-go
+	GHCRImage      string    // e.g. ghcr.io/fermedepommerieux/birdnet-go
+	DockerHubImage string    // optional Docker Hub image
 	GeneratedAt    time.Time // stamped into the manifest
 	MaxNotesLen    int       // 0 means unbounded
 }

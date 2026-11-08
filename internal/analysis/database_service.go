@@ -58,7 +58,7 @@ func abortOnV2SchemaCorruption(log logger.Logger, err error, operation, modeLabe
 // mixedSchemaGuideURL is the wiki section that explains how to resolve a MySQL or
 // MariaDB database holding both enhanced database (v2) and legacy tables. The anchor
 // follows the section heading in doc/wiki/database-doctor.md.
-const mixedSchemaGuideURL = "https://github.com/tphakala/birdnet-go/wiki/Database-Doctor#mysql-and-mariadb-enhanced-and-legacy-tables-in-one-database"
+const mixedSchemaGuideURL = "https://github.com/FermedePommerieux/birdnet-go/blob/main/doc/wiki/database-doctor.md#mysql-and-mariadb-enhanced-and-legacy-tables-in-one-database"
 
 // mixedSchemaRecoveryHint is the user-facing instruction emitted when startup refuses a
 // database that holds both schemas. db-doctor is named only to say it does not cover MySQL.

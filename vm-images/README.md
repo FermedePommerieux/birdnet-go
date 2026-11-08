@@ -1,10 +1,10 @@
 # BirdNET-Go KVM/VM Images
 
-This directory contains automation for building pre-configured KVM virtual machine images with BirdNET-Go installed and ready to use.
+This directory contains the Packer source and scripts for building a BirdNET-Go VM image. The fork does not currently publish pre-built VM image downloads; build an image from this source before importing it into a hypervisor.
 
 ## Overview
 
-Pre-built VM images provide an alternative deployment method for users who prefer virtual machines over Docker containers. These images come with BirdNET-Go pre-installed, configured, and ready to run.
+The build produces a compressed qcow2 image locally. The VM runs the fork's GHCR image and downloads its base configuration from this repository.
 
 ## Use Cases
 
@@ -15,13 +15,13 @@ Pre-built VM images provide an alternative deployment method for users who prefe
 - **QEMU Users**: Direct qcow2 compatibility
 - **Virtualization Platforms**: VMware (with conversion), VirtualBox (with conversion)
 - **Cloud Deployments**: Custom images for cloud platforms
-- **Air-Gapped Systems**: Pre-built images for isolated networks
-- **Education/Training**: Ready-to-use classroom environments
+- **Air-Gapped Systems**: Build and transfer an image after arranging registry access or preloading the container image
+- **Education/Training**: Reproducible images built from this source
 - **Development**: Consistent testing environments
 
 ### **Advantages:**
 
-- ✅ **Zero Configuration**: Boot and run immediately
+- ✅ **Repeatable Builds**: Build the image from the checked-in Packer configuration
 - ✅ **Isolated Environment**: Complete OS isolation
 - ✅ **Resource Control**: Dedicated CPU, RAM, and storage
 - ✅ **Snapshot Support**: Easy backup and rollback
@@ -37,19 +37,19 @@ Pre-built VM images provide an alternative deployment method for users who prefe
 
 ### **Image Specifications:**
 
-- **Base OS**: Ubuntu 22.04 LTS Server (minimal)
+- **Base OS**: Ubuntu 24.10 Server cloud image (as configured in Packer)
 - **Image Format**: qcow2 (QEMU Copy-On-Write)
-- **Compression**: zstd compression for smaller downloads
-- **Size**: ~2GB compressed, ~8GB expanded
+- **Compression**: zstd compression for local build output
+- **Size**: Depends on the generated image
 - **Filesystem**: ext4 with automatic resize on first boot
 
 ## Pre-Installed Components
 
 ### **System Components:**
 
-- Ubuntu 22.04 LTS Server (latest updates)
+- Ubuntu 24.10 Server (updated during the build)
 - Docker and Docker Compose
-- BirdNET-Go (latest nightly) via Docker
+- BirdNET-Go via the fork's `ghcr.io/fermedepommerieux/birdnet-go:latest` image
 - Systemd service configuration
 - SSH server (key-based authentication)
 - Cloud-init for initial configuration
@@ -61,29 +61,10 @@ Pre-built VM images provide an alternative deployment method for users who prefe
 - Web interface on port 8080
 - Audio device auto-detection
 - Log rotation configured
-- Automatic updates enabled
+- Weekly image pull configured; service restart applies the pulled image
 - Performance optimizations applied
 
 ## Build Automation
-
-### **GitHub Actions Workflow:**
-
-```yaml
-# Triggered on:
-- Release tags (v*.*.*)
-- Manual workflow dispatch
-- Monthly automated builds
-- Pull requests (build only, no upload)
-```
-
-### **Build Matrix:**
-
-```yaml
-strategy:
-  matrix:
-    arch: [amd64, arm64]
-    base: [ubuntu-22.04]
-```
 
 ### **Build Process:**
 
@@ -92,39 +73,33 @@ strategy:
 3. **Customize with Packer**: Install BirdNET-Go and dependencies
 4. **Optimize Image**: Remove unnecessary packages, clean caches
 5. **Compress Image**: zstd compression for distribution
-6. **Generate Checksums**: SHA256 checksums for verification
-7. **Upload to Releases**: Attach to GitHub release
+6. **Generate Checksums**: SHA256 checksums for local artifact verification
 
-## Download and Usage
+## Build and Usage
 
-### **Available Downloads:**
-
-```
-birdnet-go-vm-amd64-v1.0.0.qcow2.zst      # x86_64 compressed image
-birdnet-go-vm-amd64-v1.0.0.qcow2.zst.sha256   # Checksum
-birdnet-go-vm-arm64-v1.0.0.qcow2.zst      # ARM64 compressed image
-birdnet-go-vm-arm64-v1.0.0.qcow2.zst.sha256   # Checksum
-```
-
-### **Quick Start:**
+No pre-built VM image downloads are currently published. Build an image from source:
 
 ```bash
-# Download and verify
-wget https://github.com/tphakala/birdnet-go/releases/latest/download/birdnet-go-vm-amd64-v1.0.0.qcow2.zst
-wget https://github.com/tphakala/birdnet-go/releases/latest/download/birdnet-go-vm-amd64-v1.0.0.qcow2.zst.sha256
-sha256sum -c birdnet-go-vm-amd64-v1.0.0.qcow2.zst.sha256
+cd vm-images
+./build.sh amd64
+# Or: ./build.sh arm64
+sha256sum -c output-amd64/*.qcow2.zst.sha256
+zstd -dk output-amd64/*.qcow2.zst
+IMAGE=$(find output-amd64 -maxdepth 1 -name '*.qcow2' -print -quit)
+```
 
-# Decompress
-zstd -d birdnet-go-vm-amd64-v1.0.0.qcow2.zst
+The compressed image and checksum are written to `output-amd64/` or
+`output-arm64/`. Use the generated `.qcow2` file with your hypervisor. For
+example, using the generated image path:
 
-# Run with QEMU/KVM
+```bash
 qemu-system-x86_64 \
   -enable-kvm \
   -m 2G \
   -cpu host \
   -netdev user,id=net0,hostfwd=tcp::8080-:8080 \
   -device virtio-net-pci,netdev=net0 \
-  -drive file=birdnet-go-vm-amd64-v1.0.0.qcow2,format=qcow2 \
+  -drive file="$IMAGE",format=qcow2 \
   -device virtio-rng-pci
 ```
 
@@ -135,7 +110,7 @@ qemu-system-x86_64 \
 ```bash
 # Import image to Proxmox
 qm create 100 --name birdnet-go --memory 2048 --net0 virtio,bridge=vmbr0
-qm importdisk 100 birdnet-go-vm-amd64-v1.0.0.qcow2 local-lvm
+qm importdisk 100 "$IMAGE" local-lvm
 qm set 100 --scsihw virtio-scsi-pci --scsi0 local-lvm:vm-100-disk-0
 qm set 100 --boot c --bootdisk scsi0
 qm set 100 --agent enabled=1
@@ -150,7 +125,7 @@ virt-install \
   --name birdnet-go \
   --ram 2048 \
   --vcpus 2 \
-  --disk path=birdnet-go-vm-amd64-v1.0.0.qcow2,format=qcow2 \
+  --disk path="$IMAGE",format=qcow2 \
   --network bridge=virbr0 \
   --graphics none \
   --console pty,target_type=serial \
@@ -161,7 +136,7 @@ virt-install \
 
 ```bash
 # Convert qcow2 to vmdk
-qemu-img convert -f qcow2 -O vmdk birdnet-go-vm-amd64-v1.0.0.qcow2 birdnet-go.vmdk
+qemu-img convert -f qcow2 -O vmdk "$IMAGE" birdnet-go.vmdk
 # Import vmdk into VMware
 ```
 
@@ -254,7 +229,7 @@ sudo apt update && sudo apt upgrade -y
 
 # Update BirdNET-Go
 sudo systemctl stop birdnet-go
-sudo docker pull tphakala/birdnet-go:nightly
+sudo docker pull ghcr.io/fermedepommerieux/birdnet-go:latest
 sudo systemctl start birdnet-go
 ```
 
@@ -300,7 +275,7 @@ sudo tar -czf birdnet-go-backup-$(date +%Y%m%d).tar.gz \
 
 ```bash
 # Clone repository
-git clone https://github.com/tphakala/birdnet-go.git
+git clone https://github.com/FermedePommerieux/birdnet-go.git
 cd birdnet-go/vm-images
 
 # Build custom image
@@ -371,25 +346,20 @@ The VM uses a **two-disk architecture** for optimal data persistence and easy up
 
 ## 🚀 Quick Start
 
-### 1. Download VM Image
+### 1. Build the VM Image
 
-Download the latest compressed VM image for your architecture:
-
-```bash
-# AMD64
-wget https://github.com/tphakala/birdnet-go/releases/download/v1.x.x/birdnet-go-vm-amd64-v1.x.x.qcow2.zst
-
-# ARM64
-wget https://github.com/tphakala/birdnet-go/releases/download/v1.x.x/birdnet-go-vm-arm64-v1.x.x.qcow2.zst
-```
-
-### 2. Extract Image
+The fork does not publish pre-built VM image downloads. Build the image locally:
 
 ```bash
-zstd -d birdnet-go-vm-amd64-v1.x.x.qcow2.zst
+git clone https://github.com/FermedePommerieux/birdnet-go.git
+cd birdnet-go/vm-images
+./build.sh amd64 # Use arm64 for ARM systems
+sha256sum -c output-amd64/*.qcow2.zst.sha256
+zstd -dk output-amd64/*.qcow2.zst
+IMAGE=$(find output-amd64 -maxdepth 1 -name '*.qcow2' -print -quit)
 ```
 
-### 3. Create Data Disk
+### 2. Create Data Disk
 
 Create a separate disk for persistent data:
 
@@ -398,7 +368,7 @@ Create a separate disk for persistent data:
 qemu-img create -f qcow2 birdnet-go-data.qcow2 50G
 ```
 
-### 4. Start VM
+### 3. Start VM
 
 #### QEMU/KVM
 
@@ -407,7 +377,7 @@ qemu-system-x86_64 \
   -enable-kvm \
   -m 2048 \
   -smp 2 \
-  -drive file=birdnet-go-vm-amd64-v1.x.x.qcow2,format=qcow2 \
+  -drive file="$IMAGE",format=qcow2 \
   -drive file=birdnet-go-data.qcow2,format=qcow2 \
   -netdev user,id=net0,hostfwd=tcp::8080-:8080 \
   -device virtio-net,netdev=net0 \
@@ -427,12 +397,12 @@ qemu-system-x86_64 \
 
 1. Convert qcow2 to VMDK:
    ```bash
-   qemu-img convert -f qcow2 -O vmdk birdnet-go-vm-amd64-v1.x.x.qcow2 birdnet-go-vm.vmdk
+   qemu-img convert -f qcow2 -O vmdk "$IMAGE" birdnet-go-vm.vmdk
    qemu-img convert -f qcow2 -O vmdk birdnet-go-data.qcow2 birdnet-go-data.vmdk
    ```
 2. Create VM with both disks attached
 
-### 5. Initialize Data Disk
+### 4. Initialize Data Disk
 
 After first boot, initialize the data disk:
 
@@ -476,7 +446,7 @@ Open your browser and navigate to: `http://<vm-ip>:8080`
 
 The two-disk architecture makes updates safe and easy:
 
-1. **Docker Image Updates** (Automatic):
+1. **Docker Image Updates** (Weekly check, manual restart):
 
    ```bash
    # Manual update
@@ -484,12 +454,9 @@ The two-disk architecture makes updates safe and easy:
    ```
 
 2. **VM Image Updates** (Major updates):
-   - Download new VM image
-   - Shut down current VM
-   - Replace OS disk with new image
-   - Keep existing data disk attached
-   - Start VM with new OS disk + existing data disk
-   - **All your data is preserved!**
+   - Build a new VM image from this repository using the instructions below
+   - Shut down the current VM and back up its data disk
+   - Create a new VM from the locally built image and attach or restore the data disk
 
 ### Backup Strategy
 
@@ -617,7 +584,7 @@ Perfect for:
 
 - **Base OS**: Ubuntu 24.10 (Oracular Oriole)
 - **Docker**: Latest stable
-- **BirdNET-Go**: Latest nightly build
+- **BirdNET-Go**: Fork's GHCR `latest` image
 - **Architecture**: AMD64 and ARM64 supported
 
 ## 🔐 Security & User Accounts
@@ -681,20 +648,17 @@ Perfect for:
 - Minimum 4GB RAM, 8GB disk space for OS + separate data disk
 - Network connectivity for BirdNET-Go web interface
 
-### Download and Setup
+### Build and Setup
 
-1. **Download VM Image**:
+1. **Build VM Image**:
 
    ```bash
-   # Download for your architecture
-   wget https://github.com/tphakala/birdnet-go/releases/latest/download/birdnet-go-vm-amd64-VERSION.qcow2.zst
-
-   # Verify checksum
-   wget https://github.com/tphakala/birdnet-go/releases/latest/download/birdnet-go-vm-amd64-VERSION.qcow2.zst.sha256
-   sha256sum -c birdnet-go-vm-amd64-VERSION.qcow2.zst.sha256
-
-   # Decompress
-   zstd -d birdnet-go-vm-amd64-VERSION.qcow2.zst
+   git clone https://github.com/FermedePommerieux/birdnet-go.git
+   cd birdnet-go/vm-images
+   ./build.sh amd64 # Use arm64 for ARM systems
+   sha256sum -c output-amd64/*.qcow2.zst.sha256
+   zstd -dk output-amd64/*.qcow2.zst
+   IMAGE=$(find output-amd64 -maxdepth 1 -name '*.qcow2' -print -quit)
    ```
 
 2. **Create Data Disk**:
@@ -708,7 +672,7 @@ Perfect for:
 
    ```bash
    qemu-system-x86_64 \
-     -hda birdnet-go-vm-amd64-VERSION.qcow2 \
+     -hda "$IMAGE" \
      -hdb birdnet-go-data.qcow2 \
      -m 4096 \
      -smp 2 \
@@ -841,13 +805,13 @@ sudo systemctl start birdnet-go
 sudo apt update && sudo apt upgrade
 
 # Update BirdNET-Go container
-sudo docker pull ghcr.io/tphakala/birdnet-go:latest
+sudo docker pull ghcr.io/fermedepommerieux/birdnet-go:latest
 sudo systemctl restart birdnet-go
 ```
 
 ### VM Image Updates
 
-For major updates, download new VM image and migrate data:
+For major updates, build a new VM image from this repository and migrate data:
 
 1. Stop BirdNET-Go service on old VM
 2. Backup data disk or copy `/data/birdnet-go/` contents
@@ -916,8 +880,8 @@ sudo ufw status
 
 ### Getting Help
 
-- **GitHub Issues**: https://github.com/tphakala/birdnet-go/issues
-- **Documentation**: https://github.com/tphakala/birdnet-go
+- **GitHub Issues**: https://github.com/FermedePommerieux/birdnet-go/issues
+- **Documentation**: https://github.com/FermedePommerieux/birdnet-go
 - **Community**: Check GitHub discussions
 
 ## 📋 Technical Specifications

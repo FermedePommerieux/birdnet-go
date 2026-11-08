@@ -34,7 +34,7 @@ func TestExport(t *testing.T) {
 	guide := readFile(t, filepath.Join(out, "BirdNET-Go-Guide.md"))
 	assert.Contains(t, guide, bannerMarker)
 	assert.Contains(t, guide, "[installation](installation)")
-	assert.Contains(t, guide, "[privacy](https://github.com/tphakala/birdnet-go/blob/main/PRIVACY.md)")
+	assert.Contains(t, guide, "[privacy](https://github.com/FermedePommerieux/birdnet-go/blob/main/PRIVACY.md)")
 	assert.Contains(t, guide, "doc/wiki/guide.md", "banner should reference the source path")
 
 	// installation.md is published under its own name.

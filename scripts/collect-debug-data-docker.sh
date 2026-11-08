@@ -14,7 +14,7 @@ PROFILE_DURATION="${PROFILE_DURATION:-30}"
 PROBE_CONNECT_TIMEOUT="${PROBE_CONNECT_TIMEOUT:-15}"
 PROBE_MAX_TIME="${PROBE_MAX_TIME:-120}"
 # Docker image name from install.sh
-BIRDNET_GO_IMAGE="ghcr.io/tphakala/birdnet-go:nightly"
+BIRDNET_GO_IMAGE="${BIRDNET_GO_IMAGE:-ghcr.io/fermedepommerieux/birdnet-go:latest}"
 
 # Colors for output
 GREEN='\033[0;32m'

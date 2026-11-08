@@ -4,26 +4,25 @@ This guide provides instructions for setting up and running BirdNET-Go using Doc
 
 ## Container Registry Options
 
-BirdNET-Go Docker images are available from two registries:
+This fork publishes Docker images to GitHub Container Registry:
 
-- **GitHub Container Registry (Primary)**: `ghcr.io/tphakala/birdnet-go`
-- **Docker Hub (Mirror)**: `tphakala/birdnet-go`
+- **GitHub Container Registry**: `ghcr.io/fermedepommerieux/birdnet-go`
 
-Both registries contain identical images and can be used interchangeably. The examples below use GitHub Container Registry, but you can substitute `tphakala/birdnet-go` if you prefer Docker Hub.
+Use `:latest` for the latest fork release, or pin a published tag such as `:20261108`. The upstream Docker Hub image does not contain this fork's PostgreSQL support.
 
 ## Choosing a Network Mode
 
 Two Compose files are provided:
 
-- **Host networking, recommended for new Linux installs** ([`docker-compose.host.yml`](https://github.com/tphakala/birdnet-go/blob/main/Docker/docker-compose.host.yml)). The container shares the host network stack, so multicast (mDNS/DNS-SD) reaches the app directly. There is no port mapping: the app listens on `WEB_PORT` itself.
-- **Bridge networking** ([`docker-compose.yml`](https://github.com/tphakala/birdnet-go/blob/main/Docker/docker-compose.yml)). Remains supported. Existing setups are not changed and keep working as they are.
+- **Host networking, recommended for new Linux installs** ([`docker-compose.host.yml`](https://github.com/FermedePommerieux/birdnet-go/blob/main/Docker/docker-compose.host.yml)). The container shares the host network stack, so multicast (mDNS/DNS-SD) reaches the app directly. There is no port mapping: the app listens on `WEB_PORT` itself.
+- **Bridge networking** ([`docker-compose.yml`](https://github.com/FermedePommerieux/birdnet-go/blob/main/Docker/docker-compose.yml)). Remains supported. Existing setups are not changed and keep working as they are.
 
 Notes:
 
 - Host networking needs rootful Docker, or rootless Docker Engine 29.5 or later. Earlier rootless versions isolate host networking inside RootlessKit, so ports are not reachable from the host.
-- AutoTLS stays on [`docker-compose.autotls.yml`](https://github.com/tphakala/birdnet-go/blob/main/Docker/docker-compose.autotls.yml). It needs ports 80 and 443, which the non-root app cannot bind in host mode.
+- AutoTLS stays on [`docker-compose.autotls.yml`](https://github.com/FermedePommerieux/birdnet-go/blob/main/Docker/docker-compose.autotls.yml). It needs ports 80 and 443, which the non-root app cannot bind in host mode.
 - `install.sh` sets up bridge networking. That is unchanged.
-- The same choice applies to Portainer (see [Using Portainer](#using-portainer)), to plain `docker run` (see [Manual Docker Installation](installation.md#manual-docker-installation-advanced-linux-only)) and to Unraid (see the [Unraid README](https://github.com/tphakala/birdnet-go/blob/main/Unraid/README.md)). There is no host networking variant of the Podman files yet.
+- The same choice applies to Portainer (see [Using Portainer](#using-portainer)), to plain `docker run` (see [Manual Docker Installation](installation.md#manual-docker-installation-advanced-linux-only)) and to Unraid (see the [Unraid README](https://github.com/FermedePommerieux/birdnet-go/blob/main/Unraid/README.md)). There is no host networking variant of the Podman files yet.
 
 ## Prerequisites
 
@@ -41,7 +40,7 @@ Notes:
    ```
 
 2. **Create the docker-compose.yml file:**
-   Create a file named `docker-compose.yml` in this directory and copy the content from the [premade docker-compose.host.yml](https://github.com/tphakala/birdnet-go/blob/main/Docker/docker-compose.host.yml) file in the repository (host networking, recommended). The bridge alternative is the [premade docker-compose.yml](https://github.com/tphakala/birdnet-go/blob/main/Docker/docker-compose.yml).
+   Create a file named `docker-compose.yml` in this directory and copy the content from the [premade docker-compose.host.yml](https://github.com/FermedePommerieux/birdnet-go/blob/main/Docker/docker-compose.host.yml) file in the repository (host networking, recommended). The bridge alternative is the [premade docker-compose.yml](https://github.com/FermedePommerieux/birdnet-go/blob/main/Docker/docker-compose.yml).
 
 3. **Create config and data directories:**
 
@@ -72,8 +71,8 @@ Notes:
 
 Portainer can deploy the same Compose files as a stack:
 
-- **App template:** set Portainer's App Templates URL (in its settings) to `https://raw.githubusercontent.com/tphakala/birdnet-go/main/Docker/portainer-template.json` and choose **BirdNET-Go (host network, recommended)**. The **BirdNET-Go** template uses bridge networking and remains supported; **BirdNET-Go (AutoTLS)** is for AutoTLS.
-- **Stack from the repository:** use `https://github.com/tphakala/birdnet-go` as the repository and `Docker/docker-compose.host.yml` as the Compose path (or `Docker/docker-compose.yml` for bridge networking).
+- **App template:** set Portainer's App Templates URL (in its settings) to `https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/Docker/portainer-template.json` and choose **BirdNET-Go (host network, recommended)**. The **BirdNET-Go** template uses bridge networking and remains supported; **BirdNET-Go (AutoTLS)** is for AutoTLS.
+- **Stack from the repository:** use `https://github.com/FermedePommerieux/birdnet-go` as the repository and `Docker/docker-compose.host.yml` as the Compose path (or `Docker/docker-compose.yml` for bridge networking).
 
 The [Host Networking Notes](#host-networking-notes) apply to Portainer stacks too, and an existing bridge stack can be switched as described in [Switching an Existing Install](#switching-an-existing-install-optional).
 

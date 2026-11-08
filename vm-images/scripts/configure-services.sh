@@ -32,7 +32,7 @@ sudo tee /usr/local/bin/update-birdnet-go > /dev/null << 'UPDATE_EOF'
 #!/bin/bash
 echo "Updating BirdNET-Go..."
 systemctl stop birdnet-go
-docker pull tphakala/birdnet-go:nightly
+docker pull ghcr.io/fermedepommerieux/birdnet-go:latest
 systemctl start birdnet-go
 echo "Update completed"
 UPDATE_EOF

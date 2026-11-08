@@ -5,7 +5,7 @@
 // The manifest is generated in CI by tools/release-manifest and published as an
 // asset on a dedicated, never-deleted "manifest" GitHub release. The stable URL
 //
-//	https://github.com/tphakala/birdnet-go/releases/download/manifest/manifest.json
+//	https://github.com/FermedePommerieux/birdnet-go/releases/download/manifest/manifest.json
 //
 // always resolves to the latest manifest. The in-app update checker (a future
 // feature) consumes this file to decide whether a newer build is available.
@@ -99,13 +99,13 @@ type Channel struct {
 // Docker holds container image references for a channel.
 type Docker struct {
 	// GHCR is the version-pinned GitHub Container Registry reference,
-	// e.g. "ghcr.io/tphakala/birdnet-go:20260823".
+	// e.g. "ghcr.io/fermedepommerieux/birdnet-go:20260823".
 	GHCR string `json:"ghcr,omitempty"`
 	// DockerHub is the version-pinned Docker Hub reference,
-	// e.g. "tphakala/birdnet-go:20260823".
+	// e.g. "example/birdnet-go:20260823".
 	DockerHub string `json:"dockerhub,omitempty"`
 	// ChannelTag is the moving tag a user pulls to track this channel,
-	// e.g. "ghcr.io/tphakala/birdnet-go:latest" or ":nightly". This is the
+	// e.g. "ghcr.io/fermedepommerieux/birdnet-go:latest" or ":nightly". This is the
 	// authoritative reference for Docker-based installs.
 	ChannelTag string `json:"channel_tag,omitempty"`
 }

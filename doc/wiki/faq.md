@@ -2,7 +2,7 @@
 
 Common questions, problems, and fixes for BirdNET-Go. For step-by-step guides see the [Installation Guide](installation.md), [Recommended Hardware](hardware.md), [RTSP Troubleshooting](rtsp-troubleshooting.md), [Detection Pipeline](detection-pipeline.md), and [Remote Access / Cloudflare Tunnel](cloudflare_tunnel_guide.md).
 
-If your problem isn't covered here, generate a support dump from **Settings > Support** (it bundles your config and logs) and open a [discussion](https://github.com/tphakala/birdnet-go/discussions) or [issue](https://github.com/tphakala/birdnet-go/issues).
+If your problem isn't covered here, generate a support dump from **Settings > Support** (it bundles your config and logs) and open a [discussion](https://github.com/FermedePommerieux/birdnet-go/discussions) or [issue](https://github.com/FermedePommerieux/birdnet-go/issues).
 
 ## Read this first: a few things that explain most problems
 
@@ -11,7 +11,7 @@ These come up again and again, so they are worth knowing before anything else:
 - **Run `install.sh` as your normal user, never with `sudo`.** Running the installer as root creates a second, separate instance under `/root/birdnet-go-app` while your real data stays under `~/birdnet-go-app`. This is the single most common cause of "an update deleted my settings/history". Nothing was deleted; you were just looking at a fresh root install. Re-run the installer as your normal user and your data is there.
 - **Use a single mono microphone (or a mono stream).** Stereo audio does not improve detection and can hurt it. A mono mic is recommended for both local capture and RTSP.
 - **Set your location (latitude/longitude).** The range filter needs coordinates. Without them, rarity is wrong (everything shows "very rare") and out-of-range species slip into your detections.
-- **Settings hot-reload.** Almost all settings now take effect immediately without a restart. If a setting change does not seem to apply, you are probably on an older build; update to the latest nightly.
+- **Settings hot-reload.** Almost all settings now take effect immediately without a restart. If a setting change does not seem to apply, you are probably on an older build; update to the latest fork release.
 - **The "Active/Current Species" list is a prediction, not your detections.** The range-filter species list is a separate location prediction from the live detection pipeline. A strange or empty species count does **not** mean detection is broken; your detections can be flowing normally while the prediction list is just misconfigured.
 
 ## Installation and updates
@@ -22,7 +22,7 @@ Re-run `install.sh` as your normal user and choose **"Check for updates"** (opti
 
 ### My detection history is empty after an update
 
-The app opened a fresh, empty database instead of your real one. Your old detections are still in `birdnet.db`, do not delete it. This is usually caused by the data directory not being where the app expected (often the sudo-vs-normal-user issue above). Run the [Database Doctor](https://github.com/tphakala/birdnet-go/wiki/Database-Doctor): diagnose, then `--fix` (it backs up the DB first).
+The app opened a fresh, empty database instead of your real one. Your old detections are still in `birdnet.db`, do not delete it. This is usually caused by the data directory not being where the app expected (often the sudo-vs-normal-user issue above). Run the [Database Doctor](database-doctor.md): diagnose, then `--fix` (it backs up the DB first).
 
 ### Does install.sh work on macOS?
 
@@ -32,7 +32,7 @@ No. `install.sh` supports Debian, Ubuntu, and Raspberry Pi OS only. Use a manual
 
 Two things trip people up under WSL. First, the installer manages BirdNET-Go as a systemd service, so systemd has to be the init system (PID 1). Enable it by adding a `[boot]` section with `systemd=true` to `/etc/wsl.conf`, then run `wsl --shutdown` from Windows and reopen the distro. Second, "Docker cannot be accessed by user" means the `docker info` check failed, usually because your user isn't in the `docker` group yet (group changes need a fresh login, and on WSL that means another `wsl --shutdown`) or the Docker service isn't running (`sudo systemctl enable --now docker`). The full step-by-step is in [Troubleshooting install.sh](installation.md#troubleshooting-installsh).
 
-Worth knowing: BirdNET-Go also runs natively on Windows with no Docker and no WSL, so if WSL is more hassle than it's worth, just download the Windows archive from the [releases page](https://github.com/tphakala/birdnet-go/releases) and run `birdnet-go.exe`.
+Worth knowing: BirdNET-Go also runs natively on Windows with no Docker and no WSL, so if WSL is more hassle than it's worth, just download the Windows archive from the [releases page](https://github.com/FermedePommerieux/birdnet-go/releases) and run `birdnet-go.exe`.
 
 ### I installed as root. How do I move to a normal user without losing data?
 
@@ -96,7 +96,7 @@ Restart BirdNET-Go after changing a source to force a fresh stream check.
 
 ### After an update my RTSP detections dropped to zero or the audio sounds slowed down
 
-This was a regression affecting streams below 48 kHz and stereo streams. Update to the latest nightly. As a tell, **Settings > Audio** shows roughly double the expected data rate (about 188 KB/s instead of about 94 KB/s at 48 kHz) when a stereo stream is being misread as mono. The lasting fix is to send a true mono stream from a single mic; you can also force mono at the source with `-ac 1` in your streamer's FFmpeg command.
+This was a regression affecting streams below 48 kHz and stereo streams. Update to the latest fork release. As a tell, **Settings > Audio** shows roughly double the expected data rate (about 188 KB/s instead of about 94 KB/s at 48 kHz) when a stereo stream is being misread as mono. The lasting fix is to send a true mono stream from a single mic; you can also force mono at the source with `-ac 1` in your streamer's FFmpeg command.
 
 ### My RTSP password has a `#` (or other special character) and won't save
 
@@ -215,7 +215,7 @@ The maintainer's recommended starting point: enable the false-positive filter at
 
 ### Startup fails after an upgrade with a database/schema error
 
-Use the [Database Doctor](https://github.com/tphakala/birdnet-go/wiki/Database-Doctor) to diagnose and `--fix` (it backs up first). Don't drop tables yourself, several hold real data, unless the startup error says tables in the enhanced database (v2) shape hold rows; then follow [Legacy startup and tables in the enhanced database shape](https://github.com/tphakala/birdnet-go/wiki/Database-Doctor#legacy-startup-and-tables-in-the-enhanced-database-shape).
+Use the [Database Doctor](database-doctor.md) to diagnose and `--fix` (it backs up first). Don't drop tables yourself, several hold real data, unless the startup error says tables in the enhanced database (v2) shape hold rows; then follow [Legacy startup and tables in the enhanced database shape](database-doctor.md#legacy-startup-and-tables-in-the-enhanced-database-shape).
 
 ### Which MySQL and MariaDB versions are supported?
 
@@ -240,7 +240,7 @@ Set `security.redirecttohttps: false` and restart. With it enabled, session cook
 
 ### Basic-auth / OIDC questions
 
-- A basic-auth change that doesn't take effect: update to the latest nightly (auth now reads live config); on older builds, restart.
+- A basic-auth change that doesn't take effect: update to the latest fork release (auth now reads live config); on older builds, restart.
 - OIDC "no provider for openid-connect exists" is almost always a wrong **Issuer URL**, it must be the URL that serves `.well-known/openid-configuration`.
 - **Let's Encrypt / AutoTLS is currently broken** (it binds the wrong port and doesn't persist certificates). Until it is fixed, disable built-in TLS and terminate TLS at a reverse proxy instead.
 
@@ -260,7 +260,7 @@ MQTT discovery messages are retained by the broker, so after updating you need t
 
 ### Push notifications never arrive even though the test works
 
-Update to the latest nightly (an old timeout bug made every push time out instantly). Also note BirdNET-Go's two-layer model: the **provider** (URL/template) lives in config, and an **alert rule** decides when to send. Built-in rules only ring the in-app bell by default, so open the rule and add a **Push** action. Use the "Bird detected" event for every detection, or "New species detected" for first-time only. For Discord, send a proper JSON embed template, not plain text lines.
+Update to the latest fork release (an old timeout bug made every push time out instantly). Also note BirdNET-Go's two-layer model: the **provider** (URL/template) lives in config, and an **alert rule** decides when to send. Built-in rules only ring the in-app bell by default, so open the rule and add a **Push** action. Use the "Bird detected" event for every detection, or "New species detected" for first-time only. For Discord, send a proper JSON embed template, not plain text lines.
 
 ### Can I embed the BirdNET-Go UI in a Home Assistant card?
 
@@ -270,19 +270,19 @@ Enable `AllowEmbedding`. If buttons/saving fail when framed, also allow your Hom
 
 ### Audio clips won't play in Chrome (but work in Safari/Firefox)
 
-This was a server compression bug, update to the latest nightly. It is not a Cloudflare problem.
+This was a server compression bug, update to the latest fork release. It is not a Cloudflare problem.
 
 ### Audio and spectrograms 404 after an upgrade, or spectrograms never generate
 
-Update to the latest nightly (there were path-validation and Windows-specific spectrogram fixes). Make sure clip recording is enabled (**Settings > Audio > Recording**) and the format is WAV or FLAC. If old clips are 404ing, they may be in a `data/2026/` folder instead of `data/clips/2026/`, move them under `clips/`.
+Update to the latest fork release (there were path-validation and Windows-specific spectrogram fixes). Make sure clip recording is enabled (**Settings > Audio > Recording**) and the format is WAV or FLAC. If old clips are 404ing, they may be in a `data/2026/` folder instead of `data/clips/2026/`, move them under `clips/`.
 
 ### Dashboard search only finds scientific names
 
-Update to the latest nightly and make sure you've upgraded to the v2 database schema (**System > Database**, the upgrade option only shows if you're still on the legacy schema).
+Update to the latest fork release and make sure you've upgraded to the v2 database schema (**System > Database**, the upgrade option only shows if you're still on the legacy schema).
 
 ### The setup wizard keeps reappearing
 
-Update to the latest nightly. If it still loops, your `config.yaml` is likely corrupted, the UI falls back to the wizard when it can't read settings. Delete the corrupted `config.yaml` and re-run setup.
+Update to the latest fork release. If it still loops, your `config.yaml` is likely corrupted, the UI falls back to the wizard when it can't read settings. Delete the corrupted `config.yaml` and re-run setup.
 
 ### A species disappeared from my dashboard
 
@@ -292,7 +292,7 @@ The main dashboard shows a limited number of species (30 by default) and is filt
 
 ### How do I get help with a problem?
 
-Generate a support dump from **Settings > Support** (it bundles your config and logs, and uploads independently of the telemetry setting). Reference it in a [discussion](https://github.com/tphakala/birdnet-go/discussions) or [issue](https://github.com/tphakala/birdnet-go/issues). If the upload times out on a Pi (large logs), stop your audio streams first or rotate the log, then try again, it often completes in the background despite the UI error.
+Generate a support dump from **Settings > Support**. Turn off the upload option to download the file, then review and redact it before attaching it to a [fork discussion](https://github.com/FermedePommerieux/birdnet-go/discussions) or [issue](https://github.com/FermedePommerieux/birdnet-go/issues). Public issue attachments are public; this fork does not configure a hosted support-dump upload service.
 
 ### Can BirdNET-Go batch-analyze my existing audio files?
 

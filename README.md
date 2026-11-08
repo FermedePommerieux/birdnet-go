@@ -60,7 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/i
 bash ./install.sh
 ```
 
-For containers, use the public fork image `ghcr.io/fermedepommerieux/birdnet-go:latest`, or pin the [published `20261108` release](https://github.com/FermedePommerieux/birdnet-go/releases/tag/20261108). The fork installer selects `latest` by default. The [host-network Compose file](Docker/docker-compose.host.yml) and [upstream installation guide](https://github.com/tphakala/birdnet-go/wiki/installation) describe the deployment layout; verify the image reference before deploying. Fork images target Linux `amd64` and `arm64`. Upstream images do not include this fork's PostgreSQL changes. The Unraid host template is untested on real Unraid.
+For containers, use the public fork image `ghcr.io/fermedepommerieux/birdnet-go:latest`, or pin the [published `20261108` release](https://github.com/FermedePommerieux/birdnet-go/releases/tag/20261108). The fork installer selects `latest` by default. The [host-network Compose file](Docker/docker-compose.host.yml) and [fork installation guide](doc/wiki/installation.md) describe the deployment layout; verify the image reference before deploying. Fork images target Linux `amd64` and `arm64`. Upstream images do not include this fork's PostgreSQL changes. The Unraid host template is untested on real Unraid.
 
 Choose SQLite for a new local installation unless you need an external database. To use PostgreSQL 17 or 18, provision a UTF8 database and follow the [PostgreSQL configuration guide](doc/wiki/postgresql.md) before starting the fork. Switching the selected backend starts a separate history: the installer and settings screen do not copy SQLite or MySQL/MariaDB detections into PostgreSQL.
 
@@ -78,7 +78,7 @@ Choose SQLite for a new local installation unless you need an external database.
 - **BirdNET Geomodel v3.0** for location-based range filtering (12,012 species)
 - **Cross-model detection consensus**: agreement between models strengthens confidence and flags disagreements for review
 - **Custom classifiers**: bring your own TFLite model and label set
-- **Configurable false-positive filtering** for accurate results: Deep Detection (repeat-confirmation within a 15-second window), per-species dynamic thresholds, location-based range filter, privacy and dog-bark filters, and per-classifier bat false-positive levels ([guide](https://github.com/tphakala/birdnet-go/wiki/BirdNET-Go-Guide#deep-detection))
+- **Configurable false-positive filtering** for accurate results: Deep Detection (repeat-confirmation within a 15-second window), per-species dynamic thresholds, location-based range filter, privacy and dog-bark filters, and per-classifier bat false-positive levels ([guide](doc/wiki/guide.md#deep-detection))
 - Per-model and per-source confidence thresholds
 
 ### Audio inputs
@@ -95,7 +95,7 @@ Choose SQLite for a new local installation unless you need an external database.
 - Svelte 5 + TypeScript single-page app
 - Installable as a Progressive Web App (PWA)
 - Onboarding wizard for first-run setup
-- Live spectrogram visualization for active streams ([live audio streaming](https://github.com/tphakala/birdnet-go/wiki/BirdNET-Go-Guide#live-audio-streaming))
+- Live spectrogram visualization for active streams ([live audio streaming](doc/wiki/guide.md#live-audio-streaming))
 - Detection heatmaps with ONNX-accelerated rendering
 - Customizable dashboard layout, color schemes, and a "Currently Hearing" card
 - Multiselect and bulk actions on the detections list
@@ -138,25 +138,25 @@ Choose SQLite for a new local installation unless you need an external database.
 
 - Linux, Windows, and macOS
 - Single static binary with the BirdNET TFLite model embedded
-- Optional ONNX Runtime for Perch, BattyBirdNET, and BirdNET Geomodel v3.0 ([install guide](https://github.com/tphakala/birdnet-go/wiki/ONNX-Runtime-Installation))
+- Optional ONNX Runtime for Perch, BattyBirdNET, and BirdNET Geomodel v3.0 ([install guide](doc/wiki/onnx-runtime-installation.md))
 - Multi-arch Docker images
 - Runs comfortably on a Raspberry Pi 4 or equivalent 64-bit single-board computer
 
 ## Documentation
 
-- [FAQ](https://github.com/tphakala/birdnet-go/wiki/FAQ) - common questions, issues, and workarounds
-- [User guide](https://github.com/tphakala/birdnet-go/wiki/BirdNET-Go-Guide)
-- [Installation](https://github.com/tphakala/birdnet-go/wiki/installation)
-- [Hardware recommendations](https://github.com/tphakala/birdnet-go/wiki/hardware)
-- [ONNX Runtime installation](https://github.com/tphakala/birdnet-go/wiki/ONNX-Runtime-Installation)
-- [Detection pipeline](https://github.com/tphakala/birdnet-go/wiki/detection-pipeline)
-- [Database Doctor](https://github.com/tphakala/birdnet-go/wiki/Database-Doctor)
+- [FAQ](doc/wiki/faq.md) - common questions, issues, and workarounds
+- [User guide](doc/wiki/guide.md)
+- [Installation](doc/wiki/installation.md)
+- [Hardware recommendations](doc/wiki/hardware.md)
+- [ONNX Runtime installation](doc/wiki/onnx-runtime-installation.md)
+- [Detection pipeline](doc/wiki/detection-pipeline.md)
+- [Database Doctor](doc/wiki/database-doctor.md)
 - [PostgreSQL configuration, limits and testing](doc/wiki/postgresql.md) (fork feature)
-- [Training a custom classifier](https://github.com/tphakala/birdnet-go/wiki/Training-a-Custom-Classifier)
-- [Cloudflare Tunnel](https://github.com/tphakala/birdnet-go/wiki/cloudflare_tunnel_guide)
-- [Security](https://github.com/tphakala/birdnet-go/wiki/security)
-- [Telemetry and privacy](https://github.com/tphakala/birdnet-go/wiki/telemetry-privacy)
-- [RTSP troubleshooting](https://github.com/tphakala/birdnet-go/wiki/rtsp-troubleshooting)
+- [Training a custom classifier](doc/wiki/training-a-custom-classifier.md)
+- [Cloudflare Tunnel](doc/wiki/cloudflare_tunnel_guide.md)
+- [Security](doc/wiki/security.md)
+- [Telemetry and privacy](doc/wiki/telemetry-privacy.md)
+- [RTSP troubleshooting](doc/wiki/rtsp-troubleshooting.md)
 
 ## Development setup
 

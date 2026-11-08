@@ -54,7 +54,7 @@ func run() error {
 	}
 
 	schema := r.Reflect(&conf.Settings{})
-	schema.ID = "https://raw.githubusercontent.com/tphakala/birdnet-go/main/config.schema.json"
+	schema.ID = "https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/config.schema.json"
 	schema.Title = "BirdNET-Go Configuration"
 	schema.Description = "Configuration schema for BirdNET-Go's config.yaml file."
 

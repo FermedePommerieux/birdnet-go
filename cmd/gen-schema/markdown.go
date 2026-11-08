@@ -14,7 +14,7 @@ const markdownHeader = `# Configuration Reference
 > For IDE autocomplete, add to the top of your ` + "`config.yaml`" + `:
 >
 > ` + "```yaml" + `
-> # yaml-language-server: $schema=https://raw.githubusercontent.com/tphakala/birdnet-go/main/config.schema.json
+> # yaml-language-server: $schema=https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/config.schema.json
 > ` + "```" + `
 
 `

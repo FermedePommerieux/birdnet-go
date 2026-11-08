@@ -1,8 +1,8 @@
 # Release Manifest
 
-BirdNET-Go publishes a machine-readable manifest describing the latest release on
-each distribution channel. It is the data source for the in-app update checker
-and any external tooling that needs to know what the current builds are.
+This fork publishes a machine-readable manifest describing its latest releases
+and downloadable assets. It is available to external tooling; the app currently
+has no in-app release checker.
 
 ## Where it lives
 
@@ -10,7 +10,7 @@ The manifest is a single JSON asset on a dedicated, never-deleted `manifest`
 GitHub release. The stable URL always resolves to the current manifest:
 
 ```text
-https://github.com/tphakala/birdnet-go/releases/download/manifest/manifest.json
+https://github.com/FermedePommerieux/birdnet-go/releases/download/manifest/manifest.json
 ```
 
 The `manifest` release is marked as a pre-release so it never occupies the
@@ -77,19 +77,19 @@ unknown fields so additive changes do not break older clients. The Go types in
 
 Each channel object:
 
-| Field              | Type          | Notes                                                         |
-| ------------------ | ------------- | ------------------------------------------------------------- |
-| `version`          | string        | Same string baked into the binary (`settings.Version`).       |
-| `tag`              | string        | Git tag (usually equal to `version`).                         |
-| `name`             | string        | Release title.                                                |
-| `released_at`      | RFC 3339 time | Publication time (UTC).                                       |
-| `prerelease`       | bool          | GitHub pre-release flag.                                      |
-| `critical`         | bool          | Security-critical release (see markers below).                |
-| `min_upgrade_from` | string        | Lowest version that may upgrade directly; empty for none.     |
-| `release_url`      | string        | Human-facing release page.                                    |
-| `notes`            | string        | Release body / changelog (length-bounded).                    |
-| `docker`           | object        | `ghcr`, `dockerhub` (version-pinned), `channel_tag` (moving). |
-| `assets`           | array         | Native binary tarballs, one per platform/arch.                |
+| Field              | Type          | Notes                                                      |
+| ------------------ | ------------- | ---------------------------------------------------------- |
+| `version`          | string        | Same string baked into the binary (`settings.Version`).    |
+| `tag`              | string        | Git tag (usually equal to `version`).                      |
+| `name`             | string        | Release title.                                             |
+| `released_at`      | RFC 3339 time | Publication time (UTC).                                    |
+| `prerelease`       | bool          | GitHub pre-release flag.                                   |
+| `critical`         | bool          | Security-critical release (see markers below).             |
+| `min_upgrade_from` | string        | Lowest version that may upgrade directly; empty for none.  |
+| `release_url`      | string        | Human-facing release page.                                 |
+| `notes`            | string        | Release body / changelog (length-bounded).                 |
+| `docker`           | object        | Fork GHCR image refs; Docker Hub is omitted for this fork. |
+| `assets`           | array         | Native binary tarballs, one per platform/arch.             |
 
 Each asset:
 
@@ -116,35 +116,34 @@ Release authors can annotate a GitHub release body to influence the manifest:
 {
   "schema_version": 1,
   "generated_at": "2026-06-22T14:41:28Z",
-  "repo": "tphakala/birdnet-go",
+  "repo": "FermedePommerieux/birdnet-go",
   "channels": {
     "stable": {
-      "version": "20260823",
-      "tag": "20260823",
-      "name": "BirdNET-Go 20260823",
-      "released_at": "2026-08-23T10:36:58Z",
+      "version": "20261108",
+      "tag": "20261108",
+      "name": "20261108 — PostgreSQL fork",
+      "released_at": "2026-11-08T11:41:37Z",
       "prerelease": false,
       "critical": false,
-      "release_url": "https://github.com/tphakala/birdnet-go/releases/tag/20260823",
+      "release_url": "https://github.com/FermedePommerieux/birdnet-go/releases/tag/20261108",
       "notes": "...",
       "docker": {
-        "ghcr": "ghcr.io/tphakala/birdnet-go:20260823",
-        "dockerhub": "tphakala/birdnet-go:20260823",
-        "channel_tag": "ghcr.io/tphakala/birdnet-go:latest"
+        "ghcr": "ghcr.io/fermedepommerieux/birdnet-go:20261108",
+        "channel_tag": "ghcr.io/fermedepommerieux/birdnet-go:latest"
       },
       "assets": [
         {
           "platform": "linux",
           "arch": "amd64",
-          "filename": "birdnet-go-linux-amd64-20260823.tar.gz",
-          "url": "https://github.com/tphakala/birdnet-go/releases/download/20260823/birdnet-go-linux-amd64-20260823.tar.gz",
-          "size": 82091332,
-          "sha256": "5f3a..."
+          "filename": "birdnet-go-linux-amd64-20261108.tar.gz",
+          "url": "https://github.com/FermedePommerieux/birdnet-go/releases/download/20261108/birdnet-go-linux-amd64-20261108.tar.gz",
+          "size": 126090057,
+          "sha256": "6525a5b27498e308af771b927b73cee58cfda5c35d58aeec12a1e1b305e1f537"
         }
       ]
     },
     "nightly": {
-      "...": "same release and refs, channel_tag ghcr.io/tphakala/birdnet-go:nightly"
+      "...": "same release and refs, channel_tag ghcr.io/fermedepommerieux/birdnet-go:nightly"
     }
   }
 }

@@ -25,7 +25,7 @@ sudo cp birdnet-go /usr/local/bin/
 ldconfig -p | grep onnxruntime
 
 # Run BirdNET-Go
-birdnet-go
+birdnet-go serve
 ```
 
 ## Step-by-Step Guide
@@ -66,15 +66,14 @@ sudo cp birdnet-go /usr/local/bin/
 Or run directly from the extracted directory:
 
 ```bash
-./birdnet-go
+./birdnet-go serve
 ```
 
 ### 3. First run
 
-BirdNET-Go creates its configuration and data directory in the current working
-directory. On first launch it will:
+On first launch, BirdNET-Go will:
 
-- Create a default `config.yaml`
+- Create `~/.config/birdnet-go/config.yaml` (or use an existing `/etc/birdnet-go/config.yaml`)
 - Download the BirdNET v2.4 model (~45 MB)
 - Start the web interface on port 8080
 
@@ -87,7 +86,7 @@ If you do not have root access, set `LD_LIBRARY_PATH` instead of copying to
 
 ```bash
 export LD_LIBRARY_PATH="$(pwd):$LD_LIBRARY_PATH"
-./birdnet-go
+./birdnet-go serve
 ```
 
 To make this permanent, add the export to your shell profile or create a
@@ -107,7 +106,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/var/lib/birdnet-go
-ExecStart=/usr/local/bin/birdnet-go
+ExecStart=/usr/local/bin/birdnet-go serve
 Restart=on-failure
 RestartSec=5
 
@@ -155,6 +154,7 @@ installation steps above.
 
 ## More Information
 
-- Documentation: https://github.com/tphakala/birdnet-go/wiki
-- GitHub: https://github.com/tphakala/birdnet-go
-- Discussions: https://github.com/tphakala/birdnet-go/discussions
+- Documentation: https://github.com/FermedePommerieux/birdnet-go/blob/main/doc/wiki/index.md
+- GitHub: https://github.com/FermedePommerieux/birdnet-go
+- Releases: https://github.com/FermedePommerieux/birdnet-go/releases
+- Discussions: https://github.com/FermedePommerieux/birdnet-go/discussions

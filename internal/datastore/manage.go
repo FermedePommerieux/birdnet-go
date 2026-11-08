@@ -56,7 +56,7 @@ const (
 	// v2ShapedTablesGuideURL is the wiki section that explains the v2-shaped table
 	// refusal table by table. The anchor follows the section heading in
 	// doc/wiki/database-doctor.md.
-	v2ShapedTablesGuideURL = "https://github.com/tphakala/birdnet-go/wiki/Database-Doctor#legacy-startup-and-tables-in-the-enhanced-database-shape"
+	v2ShapedTablesGuideURL = "https://github.com/FermedePommerieux/birdnet-go/blob/main/doc/wiki/database-doctor.md#legacy-startup-and-tables-in-the-enhanced-database-shape"
 
 	// v2ShapedTablesRecoveryHint is the user-facing instruction emitted when legacy
 	// startup refuses to drop v2-shaped tables that hold rows.

@@ -54,7 +54,7 @@ In practice:
 
 The Linux images already contain the OpenVINO runtime. For iGPU offload you only need to pass the render device through and set the config; the amd64 image ships the Intel GPU driver (current and legacy tracks, covering older Gen8, Gen9 and Gen11 iGPUs as well as newer ones) and the entrypoint grants the runtime user access to the device automatically.
 
-> **Image version:** the bundled Intel GPU driver landed recently, so use a current image (`nightly`, or a stable release from after the feature shipped) for iGPU offload. OpenVINO CPU acceleration works on older images too.
+> **Image version:** the bundled Intel GPU driver landed recently, so use a current fork release image (`latest` or a pinned release tag from after the feature shipped) for iGPU offload. OpenVINO CPU acceleration works on older images too.
 
 ### CPU (no GPU)
 
@@ -76,7 +76,7 @@ birdnet:
      -v ./config:/config -v ./data:/data \
      --device /dev/snd \
      --device /dev/dri/renderD128 \
-     ghcr.io/tphakala/birdnet-go:nightly
+     ghcr.io/fermedepommerieux/birdnet-go:latest
    ```
 
    This example uses bridge networking. With host networking (recommended for new installs), replace `-p 8080:8080` with `--network host` and set the port with `--env BIRDNET_WEBSERVER_PORT=<port>`; see [Manual Docker Installation](installation.md#manual-docker-installation-advanced-linux-only). The device options are the same in both modes.
@@ -86,7 +86,7 @@ birdnet:
    ```yaml
    services:
      birdnet-go:
-       image: ghcr.io/tphakala/birdnet-go:nightly
+       image: ghcr.io/fermedepommerieux/birdnet-go:latest
        devices:
          - /dev/snd
          - /dev/dri/renderD128

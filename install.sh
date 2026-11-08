@@ -110,7 +110,7 @@ trap cleanup_temp_files EXIT INT TERM
 validate_version_history_entry() {
     local line="$1"
     # Format: timestamp|image_hash|config_backup|image_tag|context
-    # Example: 20240826-134817|sha256:abc123...|config-backup-20240826-134817.yaml|ghcr.io/tphakala/birdnet-go:nightly|pre-update
+    # Example: 20240826-134817|sha256:abc123...|config-backup-20240826-134817.yaml|ghcr.io/fermedepommerieux/birdnet-go:nightly|pre-update
     if [[ "$line" =~ ^[0-9]{8}-[0-9]{6}\|[^|]+\|[^|]*\|[^|]+\|[^|]+$ ]]; then
         return 0
     else

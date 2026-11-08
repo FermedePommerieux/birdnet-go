@@ -85,7 +85,7 @@ func TestRewriteLinks(t *testing.T) {
 		{
 			name: "relative link to a non-wiki file sharing a wiki basename is not mapped to the wiki page",
 			in:   "Edit [the template](../../internal/installation.md).",
-			want: "Edit [the template](https://github.com/tphakala/birdnet-go/blob/main/internal/installation.md).",
+			want: "Edit [the template](https://github.com/FermedePommerieux/birdnet-go/blob/main/internal/installation.md).",
 		},
 		{
 			name: "faq remaps to title-case slug",
@@ -103,6 +103,11 @@ func TestRewriteLinks(t *testing.T) {
 			want: "[guide](BirdNET-Go-Guide#deep-detection)",
 		},
 		{
+			name: "absolute fork-wiki URL becomes relative slug",
+			in:   "[guide](https://github.com/FermedePommerieux/birdnet-go/wiki/BirdNET-Go-Guide#deep-detection)",
+			want: "[guide](BirdNET-Go-Guide#deep-detection)",
+		},
+		{
 			name: "absolute self-wiki URL with .md suffix is cleaned",
 			in:   "[install](https://github.com/tphakala/birdnet-go/wiki/installation.md)",
 			want: "[install](installation)",
@@ -110,12 +115,12 @@ func TestRewriteLinks(t *testing.T) {
 		{
 			name: "repo-root file link becomes absolute blob URL",
 			in:   "See [privacy policy](../../PRIVACY.md).",
-			want: "See [privacy policy](https://github.com/tphakala/birdnet-go/blob/main/PRIVACY.md).",
+			want: "See [privacy policy](https://github.com/FermedePommerieux/birdnet-go/blob/main/PRIVACY.md).",
 		},
 		{
 			name: "repo file with subpath becomes absolute blob URL",
 			in:   "Use [compose](../../Docker/docker-compose.yml).",
-			want: "Use [compose](https://github.com/tphakala/birdnet-go/blob/main/Docker/docker-compose.yml).",
+			want: "Use [compose](https://github.com/FermedePommerieux/birdnet-go/blob/main/Docker/docker-compose.yml).",
 		},
 		{
 			name: "external URL is left untouched",

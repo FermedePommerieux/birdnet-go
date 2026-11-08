@@ -10,7 +10,7 @@
 
 1. Extract the tarball to a folder of your choice (e.g., `C:\BirdNET-Go\`)
 2. Keep the `.dll` files in the **same folder** as `birdnet-go.exe`
-3. Double-click `birdnet-go.exe` or run it from a terminal
+3. Open PowerShell in that folder and run `.\birdnet-go.exe serve`
 
 That's it. Windows loads DLLs from the application directory automatically.
 
@@ -40,12 +40,12 @@ Open a terminal (Command Prompt or PowerShell) in the extraction folder:
 
 ```powershell
 cd C:\BirdNET-Go
-.\birdnet-go.exe
+.\birdnet-go.exe serve
 ```
 
 On first launch BirdNET-Go will:
 
-- Create a default `config.yaml` in the current directory
+- Create a default `config.yaml` beside the executable (or use an existing one in `%APPDATA%\birdnet-go`)
 - Download the BirdNET v2.4 model (~45 MB)
 - Start the web interface on port 8080
 
@@ -73,7 +73,7 @@ This requires Administrator privileges.
 Use a tool like [NSSM](https://nssm.cc/) to install BirdNET-Go as a service:
 
 ```powershell
-nssm install BirdNET-Go C:\BirdNET-Go\birdnet-go.exe
+nssm install BirdNET-Go C:\BirdNET-Go\birdnet-go.exe serve
 nssm set BirdNET-Go AppDirectory C:\BirdNET-Go
 nssm start BirdNET-Go
 ```
@@ -96,6 +96,7 @@ code-signed. Click "More info" then "Run anyway".
 
 ## More Information
 
-- Documentation: https://github.com/tphakala/birdnet-go/wiki
-- GitHub: https://github.com/tphakala/birdnet-go
-- Discussions: https://github.com/tphakala/birdnet-go/discussions
+- Documentation: https://github.com/FermedePommerieux/birdnet-go/blob/main/doc/wiki/index.md
+- GitHub: https://github.com/FermedePommerieux/birdnet-go
+- Releases: https://github.com/FermedePommerieux/birdnet-go/releases
+- Discussions: https://github.com/FermedePommerieux/birdnet-go/discussions

@@ -198,7 +198,7 @@ sudo mkdir -p /opt/birdnet-go/{config,data,scripts}
 sudo chown -R birdnet:birdnet /opt/birdnet-go
 
 # Download base configuration
-curl -s https://raw.githubusercontent.com/tphakala/birdnet-go/main/internal/conf/config.yaml \
+curl -s https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/internal/conf/config.yaml \
   -o /opt/birdnet-go/config/config.yaml
 
 # Set absolute path for audio clips
@@ -225,7 +225,7 @@ Restart=always
 RestartSec=10
 
 # Pull latest image
-ExecStartPre=/usr/bin/docker pull tphakala/birdnet-go:nightly
+ExecStartPre=/usr/bin/docker pull ghcr.io/fermedepommerieux/birdnet-go:latest
 
 # Remove any existing container
 ExecStartPre=-/usr/bin/docker rm -f birdnet-go
@@ -240,7 +240,7 @@ ExecStart=/usr/bin/docker run --rm \
   -e TZ=UTC \
   -e BIRDNET_UID=1000 \
   -e BIRDNET_GID=1000 \
-  tphakala/birdnet-go:nightly
+  ghcr.io/fermedepommerieux/birdnet-go:latest
 
 # Cleanup
 ExecStop=-/usr/bin/docker stop birdnet-go
@@ -255,7 +255,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable birdnet-go.service
 
 # Pull Docker image
-docker pull tphakala/birdnet-go:nightly
+docker pull ghcr.io/fermedepommerieux/birdnet-go:latest
 
 echo "BirdNET-Go setup completed"
 EOF
@@ -295,7 +295,7 @@ sudo tee /usr/local/bin/update-birdnet-go > /dev/null << 'UPDATE_EOF'
 #!/bin/bash
 echo "Updating BirdNET-Go..."
 systemctl stop birdnet-go
-docker pull tphakala/birdnet-go:nightly
+docker pull ghcr.io/fermedepommerieux/birdnet-go:latest
 systemctl start birdnet-go
 echo "Update completed"
 UPDATE_EOF

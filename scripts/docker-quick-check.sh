@@ -33,7 +33,7 @@ if systemctl list-unit-files | grep -q "birdnet-go.service"; then
     fi
 else
     echo -e "${RED}❌ BirdNET-Go service not found${NC}"
-    echo "   Install with: curl -s https://raw.githubusercontent.com/tphakala/birdnet-go/main/install.sh | bash"
+    echo "   Install with: curl -s https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/install.sh | bash"
 fi
 
 # Check for running container

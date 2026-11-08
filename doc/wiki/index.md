@@ -16,10 +16,11 @@ Welcome to the BirdNET-Go documentation. This index will help you navigate throu
 - [Manual Docker Installation](installation.md#manual-docker-installation-advanced-linux-only) - Advanced Docker setup
 - [Manual Binary Installation](installation.md#manual-binary-installation-all-platforms) - Windows, macOS, and Linux binary installation
 
-**Note**: Docker images are available from both [GitHub Container Registry](https://github.com/tphakala/birdnet-go/pkgs/container/birdnet-go) and [Docker Hub](https://hub.docker.com/r/tphakala/birdnet-go).
+**Fork image:** Pull `ghcr.io/fermedepommerieux/birdnet-go:latest` from [GitHub Container Registry](https://github.com/FermedePommerieux/birdnet-go/pkgs/container/birdnet-go). The upstream Docker Hub image does not include this fork's PostgreSQL support.
 
 ## Advanced Features
 
+- [PostgreSQL storage](postgresql.md) - Supported server versions, setup, diagnostics, backups, and migration limits for this fork
 - [External Media (USB, SD, File Shares)](external-media.md) - Mounting removable and network storage for import and backup
 - [Detection Pipeline Architecture](detection-pipeline.md) - How audio flows through multi-model inference, filtering, and action dispatch
 - [ONNX Runtime Installation](onnx-runtime-installation.md) - Installing the default inference backend library for native/binary installs

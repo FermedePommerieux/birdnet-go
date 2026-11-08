@@ -33,7 +33,7 @@ sudo chown -R birdnet:birdnet /opt/birdnet-go
 sudo chown -R birdnet:birdnet /data/birdnet-go
 
 # Download base configuration
-curl -s https://raw.githubusercontent.com/tphakala/birdnet-go/main/internal/conf/config.yaml \
+curl -s https://raw.githubusercontent.com/FermedePommerieux/birdnet-go/main/internal/conf/config.yaml \
   -o /opt/birdnet-go/config/config.yaml
 
 # Configure paths for separate data disk
@@ -59,7 +59,7 @@ Restart=always
 RestartSec=10
 
 # Pull latest image
-ExecStartPre=/usr/bin/docker pull tphakala/birdnet-go:nightly
+ExecStartPre=/usr/bin/docker pull ghcr.io/fermedepommerieux/birdnet-go:latest
 
 # Remove any existing container
 ExecStartPre=-/usr/bin/docker rm -f birdnet-go
@@ -78,7 +78,7 @@ ExecStart=/usr/bin/docker run --rm \
   -e TZ=UTC \
   -e BIRDNET_UID=1000 \
   -e BIRDNET_GID=1000 \
-  tphakala/birdnet-go:nightly
+  ghcr.io/fermedepommerieux/birdnet-go:latest
 
 # Cleanup
 ExecStop=-/usr/bin/docker stop birdnet-go
@@ -94,7 +94,7 @@ sudo systemctl enable data.mount
 sudo systemctl enable birdnet-go.service
 
 # Pull Docker image
-docker pull tphakala/birdnet-go:nightly
+docker pull ghcr.io/fermedepommerieux/birdnet-go:latest
 
 # Create data disk initialization script
 sudo tee /usr/local/bin/init-data-disk > /dev/null << 'INIT_EOF'

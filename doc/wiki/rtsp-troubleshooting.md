@@ -472,7 +472,7 @@ realtime:
 
 If you're still experiencing issues:
 
-1. **Check the GitHub Issues**: Search for similar problems in the [BirdNET-Go GitHub repository](https://github.com/tphakala/birdnet-go/issues)
+1. **Check the GitHub Issues**: Search for similar problems in the [BirdNET-Go GitHub repository](https://github.com/FermedePommerieux/birdnet-go/issues)
 
 2. **Enable Debug Logging**: Add `-loglevel warning` to see detailed FFmpeg output
 

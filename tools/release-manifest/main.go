@@ -7,7 +7,7 @@
 //
 // Usage:
 //
-//	GITHUB_TOKEN=... go run ./tools/release-manifest -repo tphakala/birdnet-go -output manifest.json
+//	GITHUB_TOKEN=... go run ./tools/release-manifest -repo FermedePommerieux/birdnet-go -dockerhub-image=- -output manifest.json
 package main
 
 import (
