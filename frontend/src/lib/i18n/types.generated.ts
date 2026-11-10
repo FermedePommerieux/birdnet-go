@@ -4148,6 +4148,8 @@ export type TranslationKey =
   | 'analysis.detection.batNighttimeOnly.helpText'
   | 'analysis.detection.batUltrasonicFilter.label'
   | 'analysis.detection.batUltrasonicFilter.helpText'
+  | 'analysis.detection.batDiscardUnlikely.label'
+  | 'analysis.detection.batDiscardUnlikely.helpText'
   | 'analysis.detection.batFalsePositiveFilter.label'
   | 'analysis.detection.batFalsePositiveFilter.helpText'
   | 'analysis.detection.batFalsePositiveFilter.levels.off'
