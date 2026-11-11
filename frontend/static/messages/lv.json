@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Sistēmas informācija",
-      "os": "Operētājsistēma",
-      "hostname": "Resursdatora nosaukums",
-      "uptime": "Darbības laiks",
-      "cpus": "Procesori",
-      "model": "Sistēmas modelis",
-      "timezone": "Laika zona",
-      "temperature": "Procesora temperatūra",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Temperatūras dati nav pieejami",
       "cpuCores": "Procesora kodoli",
@@ -1232,15 +1225,7 @@
         "process": "Process"
       },
       "showAll": "Rādīt visus procesus",
-      "showBirdnetOnly": "Rādīt tikai BirdNET",
-      "table": {
-        "process": "Process",
-        "status": "Statuss",
-        "cpu": "Procesors",
-        "memory": "Atmiņa",
-        "uptime": "Darbības laiks",
-        "showAllProcesses": "Rādīt visus procesus"
-      }
+      "showBirdnetOnly": "Rādīt tikai BirdNET"
     },
     "errors": {
       "systemInfo": "Neizdevās ielādēt sistēmas informāciju: {error}",
