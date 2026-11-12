@@ -1224,8 +1224,7 @@
         "uptime": "Käynnissäoloaika",
         "process": "Prosessi"
       },
-      "showAll": "Näytä kaikki prosessit",
-      "showBirdnetOnly": "Näytä vain BirdNET"
+      "showAll": "Näytä kaikki prosessit"
     },
     "errors": {
       "systemInfo": "Järjestelmätietojen lataus epäonnistui: {error}",
@@ -6024,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Kaikki kunnossa",
+      "healthyOfTotal": "{healthy} / {total}",
       "needsAttention": "Vaatii huomiota",
       "failing": "Epäonnistuu",
       "allClear": "Ei ongelmia",

@@ -1224,8 +1224,7 @@
         "uptime": "Oppetid",
         "process": "Proces"
       },
-      "showAll": "Vis alle processer",
-      "showBirdnetOnly": "Vis kun BirdNET"
+      "showAll": "Vis alle processer"
     },
     "errors": {
       "systemInfo": "Kunne ikke indlæse systeminformation: {error}",
@@ -6024,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Alt OK",
+      "healthyOfTotal": "{healthy} af {total}",
       "needsAttention": "Kræver opmærksomhed",
       "failing": "Fejler",
       "allClear": "Alt klart",

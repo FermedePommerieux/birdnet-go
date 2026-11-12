@@ -1224,8 +1224,7 @@
         "uptime": "Laufzeit",
         "process": "Prozess"
       },
-      "showAll": "Alle Prozesse anzeigen",
-      "showBirdnetOnly": "Nur BirdNET anzeigen"
+      "showAll": "Alle Prozesse anzeigen"
     },
     "errors": {
       "systemInfo": "Fehler beim Laden der Systeminformationen: {error}",
@@ -6024,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Alles in Ordnung",
+      "healthyOfTotal": "{healthy} von {total}",
       "needsAttention": "Erfordert Aufmerksamkeit",
       "failing": "Fehlerhaft",
       "allClear": "Keine Probleme",

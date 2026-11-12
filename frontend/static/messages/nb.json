@@ -1224,8 +1224,7 @@
         "uptime": "Oppetid",
         "process": "Prosess"
       },
-      "showAll": "Vis alle prosesser",
-      "showBirdnetOnly": "Vis kun BirdNET"
+      "showAll": "Vis alle prosesser"
     },
     "errors": {
       "systemInfo": "Innlasting av systeminformasjon mislyktes: {error}",
@@ -6024,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Alle godkjent",
+      "healthyOfTotal": "{healthy} av {total}",
       "needsAttention": "Trenger oppmerksomhet",
       "failing": "Mislykkes",
       "allClear": "Alt klart",
