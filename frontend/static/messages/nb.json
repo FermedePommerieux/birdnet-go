@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Systeminformasjon",
-      "os": "Operativsystem",
-      "hostname": "Vertsnavn",
-      "uptime": "Oppetid",
-      "cpus": "CPU-er",
-      "model": "Systemmodell",
-      "timezone": "Tidssone",
-      "temperature": "CPU-temperatur",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Temperaturdata utilgjengelig",
       "cpuCores": "CPU-kjerner",
@@ -1231,16 +1224,7 @@
         "uptime": "Oppetid",
         "process": "Prosess"
       },
-      "showAll": "Vis alle prosesser",
-      "showBirdnetOnly": "Vis kun BirdNET",
-      "table": {
-        "process": "Prosess",
-        "status": "Status",
-        "cpu": "CPU",
-        "memory": "Minne",
-        "uptime": "Oppetid",
-        "showAllProcesses": "Vis alle prosesser"
-      }
+      "showAll": "Vis alle prosesser"
     },
     "errors": {
       "systemInfo": "Innlasting av systeminformasjon mislyktes: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Filterkontroll",
       "highPassFilter": "Høypassfilterkontroll: {freq} Hz",
       "seekProgress": "Spol lydfremdrift: {current} / {total} sekunder",
+      "seek": "Avspillingsposisjon",
+      "seekValueText": "{current} av {total}",
       "playbackSpeed": "Avspillingshastighet",
       "speed": "Hastighet",
-      "loop": "Veksle sløyfe",
+      "loop": "Sløyfe",
       "player": "Lydspiller",
       "autoplayBlocked": "Klikk for å spille av (autoavspilling blokkert)",
       "hlsLoadFailed": "Kunne ikke laste lydspilleren, last siden på nytt og prøv igjen",
@@ -5671,6 +5657,10 @@
         "label": "Etterdeteksjonsvalidering",
         "helpText": "Når aktivert, valideres flaggermusregistreringer ved å analysere ultrasoniske energimønstre i kildelyden. Registreringer som mangler flaggermus-ekkololokasjonskjennetegn merkes som usannsynlige."
       },
+      "batDiscardUnlikely": {
+        "label": "Forkast usannsynlige registreringer",
+        "helpText": "Når aktivert, forkastes flaggermusregistreringer som etterdeteksjonsvalideringen merker som usannsynlige: de lagres ikke, får ingen lydklipp eller varsling og kan ikke gjenopprettes. Når deaktivert (standard), lagres de og merkes som usannsynlige. Registreringer som allerede er lagret, endres ikke."
+      },
       "batFalsePositiveFilter": {
         "label": "Falsk positiv-filter for flaggermus",
         "helpText": "Krever flere bekreftelser av en flaggermusregistrering innenfor et glidende vindu før den godtas. Høyere nivåer krever flere bekreftelser og reduserer falske positive. Flaggermusmodellen bruker fast 50% overlapping, så ingen overlappjustering er nødvendig.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Alle godkjent",
+      "healthyOfTotal": "{healthy} av {total}",
       "needsAttention": "Trenger oppmerksomhet",
       "failing": "Mislykkes",
       "allClear": "Alt klart",

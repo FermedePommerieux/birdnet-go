@@ -923,13 +923,6 @@ export type TranslationKey =
   | 'system.aria.refreshData'
   | 'system.aria.dashboard'
   | 'system.systemInfo.title'
-  | 'system.systemInfo.os'
-  | 'system.systemInfo.hostname'
-  | 'system.systemInfo.uptime'
-  | 'system.systemInfo.cpus'
-  | 'system.systemInfo.model'
-  | 'system.systemInfo.timezone'
-  | 'system.systemInfo.temperature'
   | 'system.systemInfo.temperatureValue' // params: temp
   | 'system.systemInfo.temperatureUnavailable'
   | 'system.systemInfo.cpuCores'
@@ -955,13 +948,6 @@ export type TranslationKey =
   | 'system.processInfo.headers.uptime'
   | 'system.processInfo.headers.process'
   | 'system.processInfo.showAll'
-  | 'system.processInfo.showBirdnetOnly'
-  | 'system.processInfo.table.process'
-  | 'system.processInfo.table.status'
-  | 'system.processInfo.table.cpu'
-  | 'system.processInfo.table.memory'
-  | 'system.processInfo.table.uptime'
-  | 'system.processInfo.table.showAllProcesses'
   | 'system.errors.systemInfo' // params: error
   | 'system.errors.diskUsage' // params: error
   | 'system.errors.memoryUsage' // params: error
@@ -3771,6 +3757,8 @@ export type TranslationKey =
   | 'media.audio.filterControl'
   | 'media.audio.highPassFilter' // params: freq
   | 'media.audio.seekProgress' // params: current, total
+  | 'media.audio.seek'
+  | 'media.audio.seekValueText' // params: current, total
   | 'media.audio.playbackSpeed'
   | 'media.audio.speed'
   | 'media.audio.loop'
@@ -4146,6 +4134,8 @@ export type TranslationKey =
   | 'analysis.detection.batNighttimeOnly.helpText'
   | 'analysis.detection.batUltrasonicFilter.label'
   | 'analysis.detection.batUltrasonicFilter.helpText'
+  | 'analysis.detection.batDiscardUnlikely.label'
+  | 'analysis.detection.batDiscardUnlikely.helpText'
   | 'analysis.detection.batFalsePositiveFilter.label'
   | 'analysis.detection.batFalsePositiveFilter.helpText'
   | 'analysis.detection.batFalsePositiveFilter.levels.off'
@@ -4404,6 +4394,7 @@ export type TranslationKey =
   | 'health.summary.skipped'
   | 'health.summary.total'
   | 'health.metricFooter.allPassing'
+  | 'health.metricFooter.healthyOfTotal' // params: healthy, total
   | 'health.metricFooter.needsAttention'
   | 'health.metricFooter.failing'
   | 'health.metricFooter.allClear'
@@ -4973,6 +4964,7 @@ export type TranslationParams = {
   'media.audio.volumeGain': { value: string | number };
   'media.audio.highPassFilter': { freq: string | number };
   'media.audio.seekProgress': { current: string | number; total: string | number };
+  'media.audio.seekValueText': { current: string | number; total: string | number };
   'media.audio.levelFor': { source: string | number };
   'media.audio.levelAnnouncement': { level: string | number };
   'media.audio.levelAnnouncementClipping': { level: string | number };
@@ -5058,6 +5050,7 @@ export type TranslationParams = {
   'analysis.gallery.preview.dialogNotice': { build: string | number };
   'analysis.gallery.optimize.bannerTitle': { count: string | number };
   'analysis.gallery.optimize.fromTo': { from: string | number; to: string | number };
+  'health.metricFooter.healthyOfTotal': { healthy: string | number; total: string | number };
 };
 
 /**

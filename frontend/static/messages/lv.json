@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Sistēmas informācija",
-      "os": "Operētājsistēma",
-      "hostname": "Resursdatora nosaukums",
-      "uptime": "Darbības laiks",
-      "cpus": "Procesori",
-      "model": "Sistēmas modelis",
-      "timezone": "Laika zona",
-      "temperature": "Procesora temperatūra",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Temperatūras dati nav pieejami",
       "cpuCores": "Procesora kodoli",
@@ -1231,16 +1224,7 @@
         "uptime": "Darbības laiks",
         "process": "Process"
       },
-      "showAll": "Rādīt visus procesus",
-      "showBirdnetOnly": "Rādīt tikai BirdNET",
-      "table": {
-        "process": "Process",
-        "status": "Statuss",
-        "cpu": "Procesors",
-        "memory": "Atmiņa",
-        "uptime": "Darbības laiks",
-        "showAllProcesses": "Rādīt visus procesus"
-      }
+      "showAll": "Rādīt visus procesus"
     },
     "errors": {
       "systemInfo": "Neizdevās ielādēt sistēmas informāciju: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Filtra vadība",
       "highPassFilter": "Augstfrekvences filtra vadība: {freq} Hz",
       "seekProgress": "Audio pārtīšanas progress: {current} / {total} sekundes",
+      "seek": "Atskaņošanas pozīcija",
+      "seekValueText": "{current} no {total}",
       "playbackSpeed": "Atskaņošanas ātrums",
       "speed": "Ātrums",
-      "loop": "Pārslēgt cilpu",
+      "loop": "Cilpa",
       "player": "Audio atskaņotājs",
       "autoplayBlocked": "Noklikšķiniet, lai atskaņotu (automātiskā atskaņošana bloķēta)",
       "hlsLoadFailed": "Neizdevās ielādēt audio atskaņotāju, lūdzu, pārlādējiet lapu un mēģiniet vēlreiz",
@@ -5671,6 +5657,10 @@
         "label": "Pēcnoteikšanas validācija",
         "helpText": "Kad iespējots, sikspārņu noteikšana tiek pārbaudīta, analizējot ultraskaņas enerģijas modeļus avota ierakstā. Noteikšanas bez eholokācijas pazīmēm tiek atzīmētas kā maz ticamas."
       },
+      "batDiscardUnlikely": {
+        "label": "Atmest maz ticamas noteikšanas",
+        "helpText": "Kad iespējots, sikspārņu noteikšanas, ko pēcnoteikšanas validācija atzīmē kā maz ticamas, tiek atmestas: tās netiek saglabātas, tām netiek izveidots audio klips vai paziņojums, un tās nevar atjaunot. Kad atspējots (noklusējums), tās tiek saglabātas un atzīmētas kā maz ticamas. Jau saglabātās noteikšanas netiek mainītas."
+      },
       "batFalsePositiveFilter": {
         "label": "Sikspārņu viltus pozitīvo filtrs",
         "helpText": "Pieprasa vairākus apstiprinājumus sikspārņu noteikšanai slīdošajā logā pirms tā pieņemšanas. Augstāki līmeņi pieprasa vairāk apstiprinājumu, samazinot viltus pozitīvos. Sikspārņu modelis izmanto fiksētu 50% pārklāšanos, tāpēc pārklāšanās pielāgošana nav nepieciešama.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Viss kārtībā",
+      "healthyOfTotal": "{healthy} no {total}",
       "needsAttention": "Nepieciešama uzmanība",
       "failing": "Neizdodas",
       "allClear": "Bez problēmām",

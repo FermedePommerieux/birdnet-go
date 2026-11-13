@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Informácie o systéme",
-      "os": "Operačný systém",
-      "hostname": "Názov hostiteľa",
-      "uptime": "Doba prevádzky",
-      "cpus": "Procesory (CPU)",
-      "model": "Model systému",
-      "timezone": "Časové pásmo",
-      "temperature": "Teplota CPU",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Údaje o teplote nie sú k dispozícii",
       "cpuCores": "Jadrá CPU",
@@ -1231,16 +1224,7 @@
         "uptime": "Doba prevádzky",
         "process": "Proces"
       },
-      "showAll": "Zobraziť všetky procesy",
-      "showBirdnetOnly": "Zobraziť iba BirdNET",
-      "table": {
-        "process": "Proces",
-        "status": "Stav",
-        "cpu": "CPU",
-        "memory": "Pamäť",
-        "uptime": "Doba prevádzky",
-        "showAllProcesses": "Zobraziť všetky procesy"
-      }
+      "showAll": "Zobraziť všetky procesy"
     },
     "errors": {
       "systemInfo": "Nepodarilo sa načítať informácie o systéme: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Ovládanie filtra",
       "highPassFilter": "Ovládanie hornopriepustného filtra: {freq} Hz",
       "seekProgress": "Posun v nahrávke: {current} / {total} sekúnd",
+      "seek": "Pozícia prehrávania",
+      "seekValueText": "{current} z {total}",
       "playbackSpeed": "Rýchlosť prehrávania",
       "speed": "Rýchlosť",
-      "loop": "Prepnúť opakovanie",
+      "loop": "Opakovanie",
       "player": "Prehrávač zvuku",
       "autoplayBlocked": "Kliknutím spustíte prehrávanie (automatické prehrávanie blokované)",
       "hlsLoadFailed": "Prehrávač zvuku sa nepodarilo načítať, obnovte stránku a skúste to znova",
@@ -5671,6 +5657,10 @@
         "label": "Overenie po detekcii",
         "helpText": "Keď je zapnuté, detekcie netopierov sa overujú analýzou ultrazvukových energetických vzorcov v zdrojovom zvuku. Detekcie bez charakteristík echolokácie sú označené ako nepravdepodobné."
       },
+      "batDiscardUnlikely": {
+        "label": "Zahadzovať nepravdepodobné detekcie",
+        "helpText": "Keď je zapnuté, detekcie netopierov, ktoré overenie po detekcii označí ako nepravdepodobné, sa zahadzujú: neukladajú sa, nevzniká pre ne zvukový klip ani oznámenie a nedajú sa obnoviť. Keď je vypnuté (predvolené), ukladajú sa a sú označené ako nepravdepodobné. Už uložené detekcie sa nemenia."
+      },
       "batFalsePositiveFilter": {
         "label": "Filter falošne pozitívnych netopierov",
         "helpText": "Vyžaduje viacero potvrdení detekcie netopiera v posuvnom okne pred jej prijatím. Vyššie úrovne vyžadujú viac potvrdení, čím sa znižujú falošné pozitíva. Model netopierov používa pevné 50% prekrývanie, takže úprava prekrývania nie je potrebná.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Všetko v poriadku",
+      "healthyOfTotal": "{healthy} z {total}",
       "needsAttention": "Vyžaduje pozornosť",
       "failing": "Zlyháva",
       "allClear": "Bez problémov",

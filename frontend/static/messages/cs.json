@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Informace o systému",
-      "os": "Operační systém",
-      "hostname": "Název hostitele",
-      "uptime": "Doba provozu",
-      "cpus": "Procesory (CPU)",
-      "model": "Model systému",
-      "timezone": "Časové pásmo",
-      "temperature": "Teplota CPU",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Údaje o teplotě nejsou k dispozici",
       "cpuCores": "Jádra CPU",
@@ -1231,16 +1224,7 @@
         "uptime": "Doba provozu",
         "process": "Proces"
       },
-      "showAll": "Zobrazit všechny procesy",
-      "showBirdnetOnly": "Zobrazit pouze BirdNET",
-      "table": {
-        "process": "Proces",
-        "status": "Stav",
-        "cpu": "CPU",
-        "memory": "Paměť",
-        "uptime": "Doba provozu",
-        "showAllProcesses": "Zobrazit všechny procesy"
-      }
+      "showAll": "Zobrazit všechny procesy"
     },
     "errors": {
       "systemInfo": "Nepodařilo se načíst informace o systému: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Ovládání filtru",
       "highPassFilter": "Ovládání horní propusti: {freq} Hz",
       "seekProgress": "Posun v nahrávce: {current} / {total} sekund",
+      "seek": "Pozice přehrávání",
+      "seekValueText": "{current} z {total}",
       "playbackSpeed": "Rychlost přehrávání",
       "speed": "Rychlost",
-      "loop": "Přepnout opakování",
+      "loop": "Opakování",
       "player": "Přehrávač zvuku",
       "autoplayBlocked": "Kliknutím spustíte přehrávání (automatické přehrávání blokováno)",
       "hlsLoadFailed": "Nepodařilo se načíst přehrávač zvuku, obnovte stránku a zkuste to znovu",
@@ -5671,6 +5657,10 @@
         "label": "Ověření po detekci",
         "helpText": "Pokud je zapnuto, detekce netopýrů se ověřují analýzou vzorů ultrazvukové energie ve zdrojovém zvuku. Detekce bez charakteristik echolokace netopýrů jsou označeny jako nepravděpodobné."
       },
+      "batDiscardUnlikely": {
+        "label": "Zahazovat nepravděpodobné detekce",
+        "helpText": "Pokud je zapnuto, detekce netopýrů, které ověření po detekci označí jako nepravděpodobné, se zahazují: neukládají se, nevzniká k nim zvukový klip ani oznámení a nelze je obnovit. Pokud je vypnuto (výchozí stav), ukládají se a jsou označeny jako nepravděpodobné. Již uložené detekce se nemění."
+      },
       "batFalsePositiveFilter": {
         "label": "Filtr falešných detekcí netopýrů",
         "helpText": "Vyžaduje více potvrzení detekce netopýra v rámci posuvného okna před jejím přijetím. Vyšší úrovně vyžadují více potvrzení, čímž se snižuje počet falešných detekcí. Model netopýrů používá pevné 50% překrytí, takže úprava překrytí není potřeba.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Vše v pořádku",
+      "healthyOfTotal": "{healthy} z {total}",
       "needsAttention": "Vyžaduje pozornost",
       "failing": "Selhává",
       "allClear": "Bez problémů",

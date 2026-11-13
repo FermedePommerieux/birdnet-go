@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Systeminformation",
-      "os": "Operativsystem",
-      "hostname": "Værtsnavn",
-      "uptime": "Oppetid",
-      "cpus": "CPU'er",
-      "model": "Systemmodel",
-      "timezone": "Tidszone",
-      "temperature": "CPU-temperatur",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Temperaturdata ikke tilgængelig",
       "cpuCores": "CPU-kerner",
@@ -1231,16 +1224,7 @@
         "uptime": "Oppetid",
         "process": "Proces"
       },
-      "showAll": "Vis alle processer",
-      "showBirdnetOnly": "Vis kun BirdNET",
-      "table": {
-        "process": "Proces",
-        "status": "Status",
-        "cpu": "CPU",
-        "memory": "Hukommelse",
-        "uptime": "Oppetid",
-        "showAllProcesses": "Vis alle processer"
-      }
+      "showAll": "Vis alle processer"
     },
     "errors": {
       "systemInfo": "Kunne ikke indlæse systeminformation: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Filterkontrol",
       "highPassFilter": "Højpasfilter-kontrol: {freq} Hz",
       "seekProgress": "Søg i lydforløb: {current} / {total} sekunder",
+      "seek": "Afspilningsposition",
+      "seekValueText": "{current} af {total}",
       "playbackSpeed": "Afspilningshastighed",
       "speed": "Hastighed",
-      "loop": "Skift gentag",
+      "loop": "Gentag",
       "player": "Lydafspiller",
       "autoplayBlocked": "Klik for at afspille (autoplay blokeret)",
       "hlsLoadFailed": "Lydafspilleren kunne ikke indlæses, genindlæs siden og prøv igen",
@@ -5671,6 +5657,10 @@
         "label": "Validering efter detektion",
         "helpText": "Når aktiveret, valideres flagermusdetektioner ved at analysere ultralydsmønstre i kildeoptagelsen. Detektioner uden typiske flagermus-ekkolokationskarakteristika markeres som usandsynlige."
       },
+      "batDiscardUnlikely": {
+        "label": "Kassér usandsynlige detektioner",
+        "helpText": "Når aktiveret, kasseres flagermusdetektioner, som validering efter detektion markerer som usandsynlige: de gemmes ikke, får ingen lydklip eller notifikation og kan ikke gendannes. Når deaktiveret (standard), gemmes de og markeres som usandsynlige. Detektioner, der allerede er gemt, ændres ikke."
+      },
       "batFalsePositiveFilter": {
         "label": "Flagermus falsk-positiv filter",
         "helpText": "Kræver flere bekræftelser af en flagermusdetektion inden for et glidende vindue, før den accepteres. Højere niveauer kræver flere bekræftelser, hvilket reducerer falske positiver. Flagermusmodellen bruger et fast 50% overlap, så ingen overlapjustering er nødvendig.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Alt OK",
+      "healthyOfTotal": "{healthy} af {total}",
       "needsAttention": "Kræver opmærksomhed",
       "failing": "Fejler",
       "allClear": "Alt klart",

@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Järjestelmätiedot",
-      "os": "Käyttöjärjestelmä",
-      "hostname": "Isäntänimi",
-      "uptime": "Käynnissäoloaika",
-      "cpus": "Prosessorit",
-      "model": "Järjestelmämalli",
-      "timezone": "Aikavyöhyke",
-      "temperature": "Prosessorin lämpötila",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Lämpötilatiedot eivät ole saatavilla",
       "cpuCores": "CPU-ytimet",
@@ -1231,16 +1224,7 @@
         "uptime": "Käynnissäoloaika",
         "process": "Prosessi"
       },
-      "showAll": "Näytä kaikki prosessit",
-      "showBirdnetOnly": "Näytä vain BirdNET",
-      "table": {
-        "process": "Prosessi",
-        "status": "Tila",
-        "cpu": "CPU",
-        "memory": "Muisti",
-        "uptime": "Käyntiaika",
-        "showAllProcesses": "Näytä kaikki prosessit"
-      }
+      "showAll": "Näytä kaikki prosessit"
     },
     "errors": {
       "systemInfo": "Järjestelmätietojen lataus epäonnistui: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Suodattimen hallinta",
       "highPassFilter": "Ylipäästösuodattimen hallinta: {freq} Hz",
       "seekProgress": "Äänen eteneminen: {current} / {total} sekuntia",
+      "seek": "Toistokohta",
+      "seekValueText": "{current} / {total}",
       "playbackSpeed": "Toistonopeus",
       "speed": "Nopeus",
-      "loop": "Vaihda silmukka",
+      "loop": "Silmukka",
       "player": "Äänisoitin",
       "autoplayBlocked": "Klikkaa toistaaksesi (automaattinen toisto estetty)",
       "hlsLoadFailed": "Äänisoittimen lataaminen epäonnistui, lataa sivu uudelleen ja yritä uudestaan",
@@ -5671,6 +5657,10 @@
         "label": "Tunnistuksen jälkitarkistus",
         "helpText": "Kun käytössä, lepakkotunnistukset validoidaan analysoimalla ultraäänienergiakuvioita lähdeäänitteestä. Tunnistukset, joista puuttuvat kaikuluotausominaisuudet, merkitään epätodennäköisiksi."
       },
+      "batDiscardUnlikely": {
+        "label": "Hylkää epätodennäköiset tunnistukset",
+        "helpText": "Kun käytössä, lepakkotunnistukset, jotka tunnistuksen jälkitarkistus merkitsee epätodennäköisiksi, hylätään: niitä ei tallenneta, niille ei synny äänileikettä eikä ilmoitusta, eikä niitä voi palauttaa. Kun pois käytöstä (oletus), ne tallennetaan ja merkitään epätodennäköisiksi. Jo tallennettuja tunnistuksia ei muuteta."
+      },
       "batFalsePositiveFilter": {
         "label": "Lepakon väärien positiivisten suodatin",
         "helpText": "Vaatii useita vahvistuksia lepakkotunnistuksesta liukuvan ikkunan sisällä ennen kuin se hyväksytään. Korkeammat tasot vaativat enemmän vahvistuksia, mikä vähentää vääriä positiivisia. Lepakkomalli käyttää kiinteää 50 % päällekkäisyyttä, joten päällekkäisyyden säätöä ei tarvita.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Kaikki kunnossa",
+      "healthyOfTotal": "{healthy} / {total}",
       "needsAttention": "Vaatii huomiota",
       "failing": "Epäonnistuu",
       "allClear": "Ei ongelmia",

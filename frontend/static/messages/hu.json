@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Rendszer információ",
-      "os": "Operációs rendszer",
-      "hostname": "Gépnév",
-      "uptime": "Üzemidő",
-      "cpus": "CPU-k",
-      "model": "Rendszer modell",
-      "timezone": "Időzóna",
-      "temperature": "CPU hőmérséklet",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Hőmérséklet adat nem elérhető",
       "cpuCores": "CPU magok",
@@ -1231,16 +1224,7 @@
         "uptime": "Üzemidő",
         "process": "Folyamat"
       },
-      "showAll": "Összes folyamat megjelenítése",
-      "showBirdnetOnly": "Csak BirdNET megjelenítése",
-      "table": {
-        "process": "Folyamat",
-        "status": "Állapot",
-        "cpu": "CPU",
-        "memory": "Memória",
-        "uptime": "Üzemidő",
-        "showAllProcesses": "Összes folyamat megjelenítése"
-      }
+      "showAll": "Összes folyamat megjelenítése"
     },
     "errors": {
       "systemInfo": "A rendszer információ betöltése sikertelen: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Szűrő szabályozás",
       "highPassFilter": "Felül átengedő szűrő szabályozás: {freq} Hz",
       "seekProgress": "Hang előre-hátra tekerés: {current} / {total} másodperc",
+      "seek": "Lejátszási pozíció",
+      "seekValueText": "{current} / {total}",
       "playbackSpeed": "Lejátszási sebesség",
       "speed": "Sebesség",
-      "loop": "Ismétlés be/ki",
+      "loop": "Ismétlés",
       "player": "Hang lejátszó",
       "autoplayBlocked": "Kattintson a lejátszáshoz (automatikus lejátszás letiltva)",
       "hlsLoadFailed": "A hanglejátszó betöltése sikertelen, kérjük, töltse újra az oldalt, és próbálja újra",
@@ -5671,6 +5657,10 @@
         "label": "Utólagos érzékelés-ellenőrzés",
         "helpText": "Bekapcsolva a denevérészleléseket az ultrahang-energiaminták elemzésével ellenőrzi a forrásanyagban. Az echolokációs jellemzőkkel nem rendelkező észleléseket valószínűtlenként jelöli meg."
       },
+      "batDiscardUnlikely": {
+        "label": "Valószínűtlen észlelések elvetése",
+        "helpText": "Bekapcsolva az utólagos érzékelés-ellenőrzés által valószínűtlennek jelölt denevérészleléseket elveti: nem menti el őket, nem készül hozzájuk hangklip vagy értesítés, és nem állíthatók vissza. Kikapcsolva (alapértelmezett) elmenti őket valószínűtlenként megjelölve. A már mentett észleléseken nem változtat."
+      },
       "batFalsePositiveFilter": {
         "label": "Denevér hamis pozitív szűrő",
         "helpText": "Több megerősítést igényel egy denevérészleléshez egy csúszó ablakon belül, mielőtt elfogadná. A magasabb szintek több megerősítést igényelnek, csökkentve a hamis pozitívokat. A denevérmodell fix 50%-os átfedést használ, így átfedés-beállítás nem szükséges.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Minden rendben",
+      "healthyOfTotal": "{healthy} / {total}",
       "needsAttention": "Figyelmet igényel",
       "failing": "Sikertelen",
       "allClear": "Nincs probléma",

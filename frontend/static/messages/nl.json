@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "Systeem informatie",
-      "os": "Besturingssysteem",
-      "hostname": "Computernaam",
-      "uptime": "Werktijd",
-      "cpus": "Processor kernen",
-      "model": "Systeem model",
-      "timezone": "Tijdzone",
-      "temperature": "Processor temperatuur",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Temperatuur informatie niet beschikbaar",
       "cpuCores": "CPU-kernen",
@@ -1231,16 +1224,7 @@
         "uptime": "Werktijd",
         "process": "Proces"
       },
-      "showAll": "Toon alle processen",
-      "showBirdnetOnly": "Toon alleen BirdNET",
-      "table": {
-        "process": "Proces",
-        "status": "Status",
-        "cpu": "CPU",
-        "memory": "Geheugen",
-        "uptime": "Uptime",
-        "showAllProcesses": "Toon alle processen"
-      }
+      "showAll": "Toon alle processen"
     },
     "errors": {
       "systemInfo": "Systeem informatie inlezen mislukt: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Filter bediening",
       "highPassFilter": "Hoog-doorlaat filter: {freq} Hz",
       "seekProgress": "Voortgang verder spoelen: {current} / {total} seconden",
+      "seek": "Afspeelpositie",
+      "seekValueText": "{current} van {total}",
       "playbackSpeed": "Afspeelsnelheid",
       "speed": "Snelheid",
-      "loop": "Herhaling aan/uit",
+      "loop": "Herhaling",
       "player": "Audiospeler",
       "autoplayBlocked": "Klik om af te spelen (autoplay geblokkeerd)",
       "hlsLoadFailed": "De audiospeler kon niet worden geladen, laad de pagina opnieuw en probeer het nogmaals",
@@ -5671,6 +5657,10 @@
         "label": "Validatie na detectie",
         "helpText": "Indien ingeschakeld worden vleermuisdetecties gevalideerd door analyse van ultrasone energiepatronen in de bronaudio. Detecties zonder echolocatiekenmerken worden gemarkeerd als onwaarschijnlijk."
       },
+      "batDiscardUnlikely": {
+        "label": "Onwaarschijnlijke detecties verwerpen",
+        "helpText": "Indien ingeschakeld worden vleermuisdetecties die de validatie na detectie als onwaarschijnlijk markeert, verworpen: ze worden niet opgeslagen, krijgen geen audioclip of melding en kunnen niet worden hersteld. Indien uitgeschakeld (standaard) worden ze opgeslagen en als onwaarschijnlijk gemarkeerd. Al opgeslagen detecties worden niet gewijzigd."
+      },
       "batFalsePositiveFilter": {
         "label": "Vleermuis vals-positief filter",
         "helpText": "Vereist meerdere bevestigingen van een vleermuisdetectie binnen een schuifvenster voordat deze wordt geaccepteerd. Hogere niveaus vereisen meer bevestigingen, waardoor valse positieven worden verminderd. Het vleermuismodel gebruikt een vaste overlap van 50%, dus er is geen overlapaanpassing nodig.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "Alles in orde",
+      "healthyOfTotal": "{healthy} van {total}",
       "needsAttention": "Vereist aandacht",
       "failing": "Mislukt",
       "allClear": "Geen problemen",

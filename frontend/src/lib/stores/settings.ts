@@ -146,6 +146,7 @@ export interface BatSettings {
   };
   ultrasonicFilter?: {
     enabled: boolean;
+    discardUnlikely?: boolean;
   };
 }
 
@@ -1005,6 +1006,7 @@ function createEmptySettings(): SettingsFormData & { security: SecuritySettings 
       nighttimeOnly: true,
       ultrasonicFilter: {
         enabled: true,
+        discardUnlikely: false,
       },
     },
     bsgbat: {

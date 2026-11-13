@@ -1186,13 +1186,6 @@
     },
     "systemInfo": {
       "title": "System Information",
-      "os": "Operating System",
-      "hostname": "Hostname",
-      "uptime": "Uptime",
-      "cpus": "CPUs",
-      "model": "System Model",
-      "timezone": "Time Zone",
-      "temperature": "CPU Temperature",
       "temperatureValue": "{temp}°C",
       "temperatureUnavailable": "Temperature data unavailable",
       "cpuCores": "CPU cores",
@@ -1231,16 +1224,7 @@
         "uptime": "Uptime",
         "process": "Process"
       },
-      "showAll": "Show All Processes",
-      "showBirdnetOnly": "Show BirdNET Only",
-      "table": {
-        "process": "Process",
-        "status": "Status",
-        "cpu": "CPU",
-        "memory": "Memory",
-        "uptime": "Uptime",
-        "showAllProcesses": "Show all processes"
-      }
+      "showAll": "Show All Processes"
     },
     "errors": {
       "systemInfo": "Failed to load system information: {error}",
@@ -5148,9 +5132,11 @@
       "filterControl": "Filter control",
       "highPassFilter": "High-pass filter control: {freq} Hz",
       "seekProgress": "Seek audio progress: {current} / {total} seconds",
+      "seek": "Playback position",
+      "seekValueText": "{current} of {total}",
       "playbackSpeed": "Playback speed",
       "speed": "Speed",
-      "loop": "Toggle loop",
+      "loop": "Loop",
       "player": "Audio player",
       "autoplayBlocked": "Click to play (autoplay blocked)",
       "hlsLoadFailed": "Could not load the audio player, reload the page and try again",
@@ -5671,6 +5657,10 @@
         "label": "Post Detection Validation",
         "helpText": "When enabled, bat detections are validated by analyzing ultrasonic energy patterns in the source audio. Detections that lack bat echolocation characteristics are tagged as unlikely."
       },
+      "batDiscardUnlikely": {
+        "label": "Discard Unlikely Detections",
+        "helpText": "When enabled, bat detections that post detection validation tags as unlikely are discarded: they are not saved, get no audio clip or notification, and cannot be recovered. When disabled (the default), they are saved and tagged as unlikely. Detections already saved are not changed."
+      },
       "batFalsePositiveFilter": {
         "label": "Bat False Positive Filter",
         "helpText": "Requires multiple confirmations of a bat detection within a sliding window before accepting it. Higher levels require more confirmations, reducing false positives. The bat model uses a fixed 50% overlap, so no overlap adjustment is needed.",
@@ -6033,6 +6023,7 @@
     },
     "metricFooter": {
       "allPassing": "All passing",
+      "healthyOfTotal": "{healthy} of {total}",
       "needsAttention": "Needs attention",
       "failing": "Failing",
       "allClear": "All clear",

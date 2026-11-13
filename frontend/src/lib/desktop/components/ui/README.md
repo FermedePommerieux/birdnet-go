@@ -30,6 +30,7 @@ A comprehensive collection of reusable Svelte 5 components for the BirdNET-Go de
 
 - [Badge](#badge) - Status indicators and labels
 - [ProgressBar](#progressbar) - Progress visualization with thresholds
+- [Meter](#meter) - Static measurement bar (disk, CPU, table size) on the data visualization tokens
 - [LoadingSpinner](#loadingspinner) - Loading state indicator
 - [EmptyState](#emptystate) - Empty content placeholder
 - [ErrorAlert](#erroralert) - Error and notification messages
@@ -43,8 +44,6 @@ A comprehensive collection of reusable Svelte 5 components for the BirdNET-Go de
 
 ### Data Display
 
-- [ProcessTable](#processtable) - System process information
-- [SystemInfoCard](#systeminfocard) - System information display
 - [SettingsCard](#settingscard) - Configuration settings card
 - [SettingsSection](#settingssection) - Settings organization
 
@@ -117,14 +116,27 @@ interface Props {
 
 **File**: `Card.svelte`
 
-Flexible container component with header, body, and footer sections.
+Container with an optional header row, a body, and a footer. Two variants share
+the same structure:
+
+- `default`: the roomy content card (About, Help, Import/Export).
+- `panel`: the dense bordered panel for data views such as the System pages:
+  `surface-100` background, `border-100` border, `rounded-xl`, 1rem padding, and
+  a small uppercase muted title. The panel is a flex column whose body fills the
+  remaining height, so panels stretched to one grid row keep their footers
+  aligned. It does not clip its content, so sticky table headers and popovers
+  inside it are not cut off.
 
 ```typescript
-interface Props {
+interface Props extends HTMLAttributes<HTMLDivElement> {
   title?: string;
-  padding?: boolean;
-  className?: string;
-  header?: Snippet;
+  description?: string;
+  variant?: 'default' | 'panel'; // default: 'default'
+  padding?: boolean; // default: true; false leaves the body flush (tables)
+  className?: string; // root
+  bodyClassName?: string; // body wrapper, e.g. 'flex flex-col gap-3'
+  header?: Snippet; // replaces the title and description
+  headerActions?: Snippet; // trailing end of the title row
   children?: Snippet;
   footer?: Snippet;
 }
@@ -141,13 +153,29 @@ interface Props {
     <Button variant="primary" onclick={handleAction}>{t('common.save')}</Button>
   {/snippet}
 </Card>
+
+<Card variant="panel" title={t('health.diagnostics')} bodyClassName="flex flex-col gap-3">
+  {#snippet headerActions()}
+    <button type="button" aria-label={t('health.refresh')} onclick={refresh}>
+      <RefreshCw class="size-4" />
+    </button>
+  {/snippet}
+  <p class="text-sm">{summary}</p>
+</Card>
 ```
 
 **Features:**
 
-- Optional title or custom header
-- Configurable padding
-- Three content sections
+- Optional title or custom header, with trailing `headerActions` in both
+  variants. The title side wraps; when the row is too narrow, the actions move
+  below the title instead of squeezing it.
+- `bodyClassName` lays out the body itself; in the panel the body is already
+  `flex-1 min-h-0`, so a `flex flex-col` body can push a footer row down with
+  `mt-auto`.
+- `padding={false}` keeps the header padded and leaves the body flush.
+- `tabindex`, `data-testid` and other attributes pass through to the root.
+- Choose the look with `variant`, not with `className`: `cn()` does not resolve
+  conflicting utilities, so overriding the shell classes is unreliable.
 
 ---
 
@@ -361,7 +389,7 @@ interface Props<T extends string> extends Omit<HTMLAttributes<HTMLDivElement>, '
 
 **File**: `ProgressBar.svelte`
 
-Advanced progress bar with dynamic coloring and animations.
+Advanced progress bar with dynamic coloring and animations. Use it for the progress of a running task; for a measurement (disk usage, CPU share, table size) use [Meter](#meter).
 
 ```typescript
 interface ColorThreshold {
@@ -407,6 +435,90 @@ interface Props {
 - Custom label formatting
 - Striped and animated styles
 - Full accessibility
+
+---
+
+### Meter
+
+**File**: `Meter.svelte`
+
+A static measurement bar with `role="meter"`: disk usage, a process CPU share, a table's share of the database. Fills come only from the `--viz-*` tokens in `styles/tailwind.css`, which reach 3:1 against the card and against the track in both themes and do not change with the color scheme. The track is a decorative groove, so always print the value as text beside the meter.
+
+```typescript
+type MeterTone =
+  | 'series-1'
+  | 'series-2'
+  | 'series-3'
+  | 'series-4'
+  | 'series-5'
+  | 'series-6'
+  | 'series-7'
+  | 'series-8'
+  | 'success'
+  | 'warning'
+  | 'error';
+
+interface MeterThreshold {
+  value: number; // from this value upwards (units of value and max), compared with the clamped value
+  tone: MeterTone;
+}
+
+interface MeterSegment {
+  value: number; // units of value and max
+  tone: MeterTone;
+  pattern?: 'solid' | 'hatched'; // hatched marks a secondary part without a second color
+}
+
+interface Props extends HTMLAttributes<HTMLDivElement> {
+  value: number; // clamped to 0..max; a non-finite value reads as 0
+  max?: number; // default 100
+  tone?: MeterTone; // default 'series-1'
+  thresholds?: MeterThreshold[]; // single fill only; the highest threshold at or below the clamped value wins
+  segments?: MeterSegment[]; // stacked parts instead of one fill; value stays the reported value
+  size?: 'xs' | 'sm'; // xs 0.375rem for table rows, sm 0.5rem (default) for cards
+  label: string; // accessible name
+  valueText?: string; // aria-valuetext, such as "3.2 GB of 8 GB"
+  className?: string;
+}
+```
+
+**Usage:**
+
+```svelte
+<!-- Disk usage on a card: green, then amber from 70%, red from 90% -->
+<Meter
+  value={disk.usage_percent}
+  tone="success"
+  thresholds={[
+    { value: 70, tone: 'warning' },
+    { value: 90, tone: 'error' },
+  ]}
+  label={t('system.storage.title')}
+/>
+
+<!-- RAM used plus buffers and cache as two parts of one hue -->
+<Meter
+  value={usedPct}
+  segments={[
+    { value: usedPct, tone: 'series-2' },
+    { value: cachePct, tone: 'series-2', pattern: 'hatched' },
+  ]}
+  label={t('system.storage.ram')}
+/>
+
+<!-- CPU in a table row: the caller sets the width in a flex row -->
+<div class="flex items-center justify-end gap-2">
+  <Meter size="xs" value={cpu} className="w-12" label={name} />
+  <span class="w-12 text-right tabular-nums">{cpu.toFixed(1)}%</span>
+</div>
+```
+
+**Features:**
+
+- Full width by default; a width utility in `className` overrides it
+- Stacked parts are separated by a 2 px gap; only the data end is rounded
+- Series 2 to 7 stay distinguishable from each other in both themes, including under protanopia and deuteranopia, so they can share one chart; series 1 and 8 are for single-series marks and overflow
+- Width changes animate, except under `prefers-reduced-motion`; forced-colors mode outlines the track and paints fills in a system color
 
 ---
 
