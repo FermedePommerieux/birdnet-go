@@ -2,7 +2,7 @@
   import { cn } from '$lib/utils/cn.js';
   import { generateId } from '$lib/utils/uuid';
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { Component } from 'svelte';
+  import { tick, type Component, type Snippet } from 'svelte';
 
   interface Props extends HTMLAttributes<HTMLDivElement> {
     label: string;
@@ -23,7 +23,19 @@
     value: boolean;
     /** Blocks changes but keeps the switch focusable (aria-disabled), announced with its description. */
     disabled?: boolean;
+    /** Id of an element outside the field that also describes the switch, read after its own description. */
+    describedBy?: string;
+    /**
+     * Id of an element outside the field whose text is read before the label in the switch's
+     * accessible name, such as a row heading, so repeated labels stay unique.
+     */
+    contextLabelId?: string;
     error?: string;
+    /**
+     * Default variant only: badges shown on the label line after the label text. They are not
+     * part of the accessible name, so a state they show must also be in the description.
+     */
+    badges?: Snippet;
     onUpdate: (_value: boolean) => void;
     required?: boolean;
     className?: string;
@@ -37,7 +49,10 @@
     variant = 'default',
     value = $bindable(),
     disabled = false,
+    describedBy: outsideDescriptionId,
+    contextLabelId,
     error,
+    badges,
     onUpdate,
     required = false,
     className = '',
@@ -59,7 +74,7 @@
     if (disabled) event.preventDefault();
   }
 
-  function handleChange(event: Event) {
+  async function handleChange(event: Event) {
     const target = event.target as HTMLInputElement;
     // A click cancel can still be skipped when an ancestor stops the click in the capture
     // phase, before it reaches the input, so a disabled switch also restores its state here
@@ -70,6 +85,11 @@
     const newValue = target.checked;
     // Only notify parent via onUpdate, let bindable value handle internal state
     onUpdate(newValue);
+    // The switch shows value, not what was clicked: when the parent refuses the change, or
+    // its request fails later, the native checkbox has already flipped and must flip back.
+    // The same node is kept, so keyboard focus stays on the switch.
+    await tick();
+    target.checked = value;
   }
 
   // Native Tailwind toggle classes: shared base + size variants. The off track is
@@ -168,13 +188,18 @@
   let cardIconClasses = $derived(
     cn(
       'mt-0.5 size-5 shrink-0',
-      value ? 'text-[var(--color-primary)]' : 'text-[var(--color-base-content)] opacity-70'
+      value ? 'text-[var(--text-primary)]' : 'text-[var(--color-base-content)] opacity-70'
     )
   );
 
-  // The description first, then the error: neither is part of the accessible name
+  // The description first, then the error, then an outside description: none is part of the
+  // accessible name
   let describedBy = $derived(
-    [description ? descriptionId : undefined, error ? `${fieldId}-error` : undefined]
+    [
+      description ? descriptionId : undefined,
+      error ? `${fieldId}-error` : undefined,
+      outsideDescriptionId,
+    ]
       .filter(Boolean)
       .join(' ') || undefined
   );
@@ -191,13 +216,14 @@
   <input
     id={fieldId}
     type="checkbox"
+    role="switch"
     class={cn(toggleBaseClasses, variantClasses)}
     checked={value}
     aria-disabled={disabled ? 'true' : undefined}
     required={required && !disabled}
     onclickcapture={handleClick}
     onchangecapture={handleChange}
-    aria-labelledby={labelId}
+    aria-labelledby={contextLabelId ? `${contextLabelId} ${labelId}` : labelId}
     aria-describedby={describedBy}
     aria-invalid={error ? 'true' : undefined}
   />
@@ -248,17 +274,27 @@
     {/if}
   {:else}
     <div class="flex items-center justify-between">
-      <div class="flex-1">
+      <div class="min-w-0 flex-1">
         <label for={fieldId} class={cn('flex items-start gap-2 p-0', labelCursorClass)}>
           {#if icon}
             {@const Icon = icon}
             <Icon class="size-4 text-[var(--color-base-content)] opacity-60 mt-0.5 shrink-0" />
           {/if}
-          <div>
-            <div id={labelId} class="text-sm font-medium text-[var(--color-base-content)]">
-              {label}
-              {@render requiredMark()}
-            </div>
+          <div class="min-w-0">
+            {#if badges}
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <div id={labelId} class="text-sm font-medium text-[var(--color-base-content)]">
+                  {label}
+                  {@render requiredMark()}
+                </div>
+                {@render badges()}
+              </div>
+            {:else}
+              <div id={labelId} class="text-sm font-medium text-[var(--color-base-content)]">
+                {label}
+                {@render requiredMark()}
+              </div>
+            {/if}
             {#if description}
               <div id={descriptionId} class="help-text mt-1">
                 {description}

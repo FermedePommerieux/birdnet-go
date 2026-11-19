@@ -111,7 +111,7 @@ describe('SystemProcessTable', () => {
     const pill = within(screen.getByRole('table'))
       .getByText('zombie')
       .closest<HTMLElement>('span.rounded-full.border');
-    expect(pill?.getAttribute('style')).toContain('color: var(--text-error)');
+    expect(pill).toHaveClass('badge-status-error');
   });
 
   it('shows CPU clamped to 0-100 and memory and uptime in compact units', () => {
@@ -196,7 +196,7 @@ describe('SystemProcessTable', () => {
     await view.rerender(tableProps({ processes: [], error: null }));
 
     await waitFor(() =>
-      expect(screen.getByRole('checkbox', { name: t('system.processInfo.showAll') })).toHaveFocus()
+      expect(screen.getByRole('switch', { name: t('system.processInfo.showAll') })).toHaveFocus()
     );
   });
 
@@ -286,7 +286,7 @@ describe('SystemProcessTable', () => {
       await fireEvent.click(retry);
       retry.blur();
       await fireEvent.click(cell);
-      const title = screen.getByText(t('system.processInfo.title'));
+      const title = screen.getByRole('heading', { name: t('system.processInfo.title') });
       await fireEvent.pointerDown(title);
       await fireEvent.click(title);
 

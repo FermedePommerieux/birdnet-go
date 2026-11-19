@@ -110,10 +110,26 @@ type Result struct {
 	// used by the datastore to classify sound-event classes correctly.
 	RawLabel string
 
+	// OriginalSpecies is the model's own pick, set once a reviewer has changed the
+	// species and kept when it is changed back. It is zero when the species was never
+	// changed. Only the enhanced (v2) database reads set it and saves ignore it. Its
+	// confidence is Confidence.
+	OriginalSpecies Species
+
 	// Review status (populated from DB relations when loaded)
 	Verified string
 	Locked   bool
 	Comments []Comment
+
+	// FirstReviewedAt is when the detection's review was first stored, LastReviewedAt
+	// when it was last saved (any save moves it, including the same status saved again
+	// and a species change; it is never earlier than FirstReviewedAt), and LockedAt
+	// when the current lock was set. They are zero without a review or lock. Only the
+	// enhanced (v2) database's single-detection read (Get) sets them, in the station
+	// zone; every list read and the legacy store leave them zero, and saves ignore them.
+	FirstReviewedAt time.Time
+	LastReviewedAt  time.Time
+	LockedAt        time.Time
 }
 
 // IsSpectrogramOnly reports whether retention removed the detection's audio but a

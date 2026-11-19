@@ -142,8 +142,10 @@ Lightweight connectivity check. Returns a minimal response with no database quer
 | GET    | `/detections/recent`          | `GetRecentDetections`     | ❌   | Recent detections; `limit` defaults to 10 and is capped at 1000                                                            |
 | GET    | `/detections/:id/time-of-day` | `GetDetectionTimeOfDay`   | ❌   | Detection time context                                                                                                     |
 | GET    | `/detections/:id/predictions` | `GetDetectionPredictions` | ❌   | Alternate species the detecting model scored (enhanced database only)                                                      |
+| GET    | `/detections/:id/neighbors`   | `GetDetectionNeighbors`   | ❌   | Previous and next detection ids, overall and of the same species (enhanced database only)                                  |
 | DELETE | `/detections/:id`             | `DeleteDetection`         | ✅   | Delete detection record                                                                                                    |
 | POST   | `/detections/:id/review`      | `ReviewDetection`         | ✅   | Review/verify detection                                                                                                    |
+| PUT    | `/detections/:id/species`     | `ChangeDetectionSpecies`  | ✅   | Set the species as a reviewer's correction (enhanced database only)                                                        |
 | POST   | `/detections/:id/lock`        | `LockDetection`           | ✅   | Lock detection from changes                                                                                                |
 | POST   | `/detections/ignore`          | `IgnoreSpecies`           | ✅   | Toggle species in ignore list (add/remove)                                                                                 |
 | GET    | `/detections/ignored`         | `GetExcludedSpecies`      | ✅   | Get list of excluded species                                                                                               |
@@ -325,6 +327,19 @@ at the end of daylight saving time show the same `date` and `time` and differ in
 match and moon phase of a response use the same instant. A legacy database stores only offset-free date and
 time text, so there both detections get the first occurrence's offset.
 
+**Review and lock times.** On the enhanced (v2) database, `GET /detections/:id` carries `firstReviewedAt`,
+`lastReviewedAt` and `lockedAt`, each an RFC3339 time in the station zone, formatted like `timestamp`.
+`firstReviewedAt` is when the detection's review was first stored. `lastReviewedAt` is when the review was
+last saved: any save moves it, so the same status saved again and a species change both do, and it is never
+earlier than `firstReviewedAt` (they are equal for a review saved once). `lockedAt` is when the current lock
+was set; unlocking removes it and locking again starts a new time. Each is omitted without a review or lock
+and on the legacy database. List, recent and `POST /search` responses do not carry them. A review or lock
+imported from the legacy database can carry the time the migration copied or synced it rather than when it was made. On MySQL and MariaDB these times
+are stored as local wall clock without an offset, unlike `timestamp`, so one saved in the repeated hour at
+the end of daylight saving time can read back an hour early. A lock set by an earlier version was stamped in
+the database server's zone, so where the MySQL or MariaDB server zone differs from the BirdNET-Go zone its
+`lockedAt` is off by that difference; unlocking and locking again corrects it.
+
 **Spectrogram frequency range.** Bird spectrograms span 0 to 12 kHz. Bat
 spectrograms render at the clip's own sample rate and span 0 to half of it (a 384 kHz clip shows 0 to
 192 kHz, a 192 kHz clip 0 to 96 kHz). Bat renders carry the `-bat-v3` token in their file name, and a
@@ -368,12 +383,35 @@ written best-effort).
 - The SSE `pending` event has its own `modelContributions` with a different element shape (`modelID`,
   `hitCount`, `maxConfidence`, present only when more than one model contributed).
 
+**Species change.** `PUT /detections/:id/species` with `{"scientificName": "..."}` sets the species of a
+detection as a reviewer's correction, on the enhanced (v2) database only. The detection takes the detecting
+model's label for that species (by name or taxonomic alias); confidence, clip and times are unchanged, and the
+detection is marked reviewed as `correct`. The first change records the model's own pick, and later changes
+keep it. A request for the species the detection already has changes nothing and answers 200, except that a locked detection answers 409 first. The success
+body is `{"status":"success"}`.
+
+- `originalSpecies`: list, recent and single detection responses carry `originalSpecies` (`scientificName`,
+  `commonName`, `speciesCode`) once a reviewer has changed the species, also after it was changed back. Its
+  confidence is the detection's `confidence`. It is omitted when the species was never changed and on the
+  legacy database. `POST /search` does not carry it.
+- Status codes: `409` when the enhanced database is not in use and for a locked detection (checked before the species is looked up), `400` for an id
+  that is not a positive integer that fits in 32 bits, a body that cannot be read, a missing name, a name
+  without a species part and an unknown species, `404` when the detection does not exist, and `500` for a database error.
+- Limitations: the new-species flags (`isNewSpecies`, `daysSinceFirstSeen` and the yearly and seasonal ones)
+  of the changed detection and of both species can stay as they were until the species tracker next
+  re-syncs from the database. Nothing already published is retracted or sent again: MQTT, BirdWeather, SSE
+  and notifications keep the species they were sent with. The clip file name and the tags embedded in the
+  clip keep the old species. No audit event is recorded, and no history is kept: only the model's own pick
+  and the current species. Only a species that already has a label row, for any model, is accepted; any
+  other name answers 400.
+
 **Detection predictions.** On the enhanced (v2) database, `GET /detections/:id/predictions` returns the
 alternate species the detecting model scored for one detection. `modelPredictions` has one element per
 model, today at most one, with `modelName`, `modelVersion`, `modelVariant`, `modelType` and `predictions`.
 `predictions` is never empty, and `modelPredictions` is `[]` when nothing remains after filtering. Each
 prediction has `scientificName` (the current, canonical name), `commonName`, `speciesCode` and
-`confidence`, ordered by confidence descending, then by scientific name.
+`confidence`, and `original` (on at most one entry, and absent when the species was never changed or was
+changed back; see below), ordered by confidence descending, then by scientific name.
 
 - Filtered out: the detected species and its aliases, human sound classes, and a dog class that scores
   below every non-dog alternate that remains, and is kept when none remains. This is a heuristic: the classifier adds one past its top results so that
@@ -381,6 +419,10 @@ prediction has `scientificName` (the current, canonical name), `commonName`, `sp
   The comparison is against the stored alternates, which are only those at or above
   `birdnet.alternateminconfidence`, so a genuine dog result is hidden when it scores below every stored non-dog alternate,
   and with fewer stored rows this happens more often.
+- Original pick: after a species change the model's own pick is listed with `original: true` and the
+  detection's confidence, unless it is the current species. It is exempt from the human sound and dog
+  filters, does not take part in the dog comparison, and a stored alternate of the same species is merged
+  into it.
 - Scope: the species the detecting model ranked in its top 10 for the analysis window that produced
   the detection, without the detected species and, when a location is set and the model takes part in
   range filtering, without species outside the location's range (for detections saved after the range
@@ -395,6 +437,65 @@ prediction has `scientificName` (the current, canonical name), `commonName`, `sp
   as Male or Child.
 - Status codes: `409` when the enhanced database is not in use, `400` for an id that is not a positive
   integer that fits in 32 bits, `404` when the detection does not exist, and `500` for a database error.
+
+**Detection neighbors.** `GET /api/v2/detections/:id/neighbors` returns the ids of the detections next to one
+detection, for stepping through detections:
+
+```json
+{
+  "detectionId": 509253,
+  "previous": 509252,
+  "next": 509254,
+  "previousSameSpecies": 509100,
+  "nextSameSpecies": null
+}
+```
+
+Every key is always present, and a neighbor that does not exist is `null`.
+
+- Order: `previous` is the greatest id below `:id` and `next` the smallest id above it, so gaps left by deleted
+  detections are skipped. The order is record id order, which is the order detections were stored. After an
+  import it can differ from time order.
+- Same species: `previousSameSpecies` and `nextSameSpecies` walk the detections of the species of `:id`, matched by
+  scientific name across the labels of every model, including labels stored in the legacy
+  `ScientificName_CommonName` form. Two spellings of one species, such as a former and a current name, are two
+  separate chains. Refetch the neighbors after the species of the detection is changed.
+- Status codes: `409` when the enhanced database is not in use, `400` for an id that is not a positive integer
+  that fits in 32 bits, `404` when the detection does not exist, and `500` for a database error.
+
+**Species statistics.** `GET /api/v2/species/stats?scientific_name=Parus%20major` returns the all-time statistics of
+one species. The handler is `detections/species_stats.go`, because it reads the detection store.
+
+```json
+{
+  "scientificName": "Parus major",
+  "count": 1234,
+  "firstHeard": "2024-03-01T06:12:44+02:00",
+  "lastHeard": "2026-11-14T09:01:10+02:00",
+  "avgConfidence": 0.71,
+  "maxConfidence": 0.98,
+  "reviews": { "correct": 12, "falsePositive": 3 }
+}
+```
+
+Every key is always present. `firstHeard`, `lastHeard`, `avgConfidence` and `maxConfidence` are `null` when `count`
+is 0.
+
+- False positives: `count`, the two times and the two confidences leave out detections reviewed as false positive,
+  by the rule `/analytics/species/summary` uses. `reviews` counts the reviewed detections, so
+  `count + reviews.falsePositive` is every stored detection of the species and `reviews.correct` is part of `count`.
+- Scope: all time and all models. There is no date range parameter.
+- Species matching: send the scientific name as detection responses carry it, with the same spelling and letter
+  case. It is matched across the labels of every model, including labels stored in the legacy
+  `ScientificName_CommonName` form, the same labels the same-species neighbors walk. Unlike
+  `/analytics/species/summary`, which lists a species once per stored label spelling, the legacy and the bare form
+  are one result here. Two spellings of one species, such as a former and a current name, are counted separately.
+- Times: the stored instant as RFC3339 in the station zone, like a detection's `timestamp`. Confidences are 0 to 1.
+- A name no detection was ever stored under answers `200` with zeros and nulls, not `404`.
+- Status codes: `409` when the enhanced database is not in use (a client can fall back to
+  `/analytics/species/summary` there), `400` for a missing name or a name without a species part, and `500` for a
+  database error.
+- Cost: proportional to the number of detections of the species.
 
 ### Notifications (`notifications/notifications.go`)
 
@@ -415,7 +516,7 @@ prediction has `scientificName` (the current, canonical name), `commonName`, `sp
 
 | Method | Route                   | Handler                       | Auth | Description                                                                                                                                                                                          |
 | ------ | ----------------------- | ----------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/range/status`         | `GetRangeFilterStatus`        | ❌   | Per-classifier geomodel coverage, auto-selection, threshold                                                                                                                                          |
+| GET    | `/range/status`         | `GetRangeFilterStatus`        | ❌   | Per-classifier geomodel coverage, auto-selection, threshold, missing-geomodel diagnosis (`geomodelIssue`), `reloadFailed`                                                                            |
 | GET    | `/range/species/scores` | `GetRangeFilterSpeciesScores` | ❌   | Raw geomodel scores, primary model only; excludes always-active secondary models (e.g. bats) by design                                                                                               |
 | GET    | `/range/species/count`  | `GetRangeFilterSpeciesCount`  | ❌   | Species count with range filter                                                                                                                                                                      |
 | GET    | `/range/species/list`   | `GetRangeFilterSpeciesList`   | ❌   | Species list with taxonomy groups                                                                                                                                                                    |
@@ -443,6 +544,8 @@ prediction has `scientificName` (the current, canonical name), `commonName`, `sp
 | PUT    | `/settings`                | `UpdateSettings`        | ✅   | Update all settings                                                       |
 | PATCH  | `/settings/:section`       | `UpdateSectionSettings` | ✅   | Update settings section (writes to `/dashboard` still require auth)       |
 
+Both `PUT /settings` and `PATCH /settings/:section` answer `400` while the resulting `security.oauthProviders` holds an entry whose `provider` is blank or not one of `github`, `google`, `kakao`, `line`, `microsoft` or `oidc`, whichever section was patched. The message names the entry, for example `security.oauthProviders[0].provider "gogle" is not a supported provider`, except when a `PATCH /settings/security` body itself sends such an entry: the section validation rejects it first, with the generic message `Failed to update security settings`. A client clears it by sending the list without that entry. The same two requests also answer `400` while `security.baseUrl` is set but not an absolute `http` or `https` URL with a host and no credentials; the message names `security.baseUrl`, and sending an empty or valid value clears it.
+
 The `GET /settings/connection` endpoint tells the requester how their own connection relates to the saved `security.trustedProxies` list, for the Reverse proxy card on the Security settings page. It is read-only and describes only the current request: it returns no other client's data and no raw header text; `verifiedClientAddress` is the requester's own address as the authentication decision sees it (from a verified forwarded header when one applies). It uses the same classifier (`proxytrust.Checker.Classify`) as the subnet bypass log notices, so it agrees with the authentication decision, and it reads the settings on every request, so a save applies on the next check without a restart. The response is `Cache-Control: no-store` and carries `status`, `peerAddress`, `hasForwardedHeaders`, `peerIsTrustedProxy`, `verifiedClientAddress` (the address the authentication decision uses, `""` when none could be verified), `peerIsCloudflareEdge` and `cloudflarePresetWouldVerify` (listing the peer together with the `cloudflare` preset would verify headers that currently do not verify). `status` is one of:
 
 - `direct`: no client-IP header, the peer is the client.
@@ -457,6 +560,8 @@ The `GET /settings/dashboard` endpoint is intentionally public so that unauthent
 **Optimistic concurrency:** `GET /settings` and a successful `PUT /settings` or `PATCH /settings/:section` send an `ETag` response header. The value is opaque and strong (`"<process id>-<revision>"`); it changes on every settings write, including a rollback of a failed write and writes the server makes itself (a model install, a species exclusion), and it changes after a restart. It does not change when the server rebuilds the range filter species list or stamps its update time: those fields (`birdnet.rangeFilter.species` and `lastUpdated`) are served by `GET /settings` but cannot be written through the API, so a client that missed them loses nothing, and the body of `GET /settings` can differ between two responses that carry the same `ETag`. `PUT /settings` and `PATCH /settings/:section` honour `If-Match` only when it is sent: if it does not match the current `ETag` the request answers `412 Precondition Failed` with the current `ETag`, and nothing is changed. A request without `If-Match` is applied as before (there is no `428`), but a request that sends the header with an empty value lists no tag and answers `412`. The `ETag` identifies the whole settings, not one section, so `GET /settings/:section` sends none and a `PATCH` is checked against the ETag of the whole settings. Validators are compared strongly: `*` and a list of tags are accepted, and a weak `W/"..."` tag never matches. A client behind a proxy that weakens the `ETag` should leave `If-Match` out. A proxy that rewrites the value when it compresses (Apache `mod_deflate` and Caddy append `-gzip`) makes every `If-Match` fail the same way; the 412 still names the current `ETag`, and the web UI stops sending `If-Match` for the page session once two 412s in a row name the same one.
 
 **Restart-required signal:** `PUT /settings` and `PATCH /settings/:section` responses include `restart_required` (bool) and `restart_reasons` (string[]), reflecting the global restart state also served by `GET /system/restart-status`. Settings bound once at startup that cannot hot-reload set this flag: web server / TLS settings, database (`output`), logging, and TLS certificate operations. `restart_reasons` carries i18n message keys (e.g. `restart.reasons.database`), not English text; the SPA resolves them via the translation catalog. The flag is sticky (it clears when the process actually restarts) and is not cleared by reverting the change.
+
+**Stored section in the PATCH response:** `PATCH /settings/:section` answers with `message`, `skippedFields`, `restart_required`, `restart_reasons` and `settings`, the sanitized stored section as the server now holds it (secrets redacted, server-added keys such as a source's `quietHours` present). It is the section in the shape the server keeps, not necessarily what `GET /settings/:section` serves: the `rtsp`, `privacyfilter`, `dogbarkfilter` and `telemetry` sections can be patched but have no `GET /settings/:section` endpoint. A client records `settings` as the saved value instead of its own request, which differs wherever the server adds, drops or normalizes a key. `PUT /settings` has no such field.
 
 **Blocked fields:** a set of fields can never be written through the settings API, on either write path. Both `PUT /settings` and `PATCH /settings/:section` merge the request into the current settings and then restore the blocked fields from the pre-update snapshot. Sending such a field is not an error: the rest of the request is applied normally and only the blocked values are reverted.
 
@@ -480,13 +585,16 @@ Both verbs report identically under the `skippedFields` response key: it lists o
 
 ### Species (`species/species.go`)
 
-| Method | Route                         | Handler                  | Auth | Description                                                       |
-| ------ | ----------------------------- | ------------------------ | ---- | ----------------------------------------------------------------- |
-| GET    | `/species`                    | `GetSpeciesInfo`         | ❌   | Get extended species information including rarity status          |
-| GET    | `/species/all`                | `GetAllSpecies`          | ❌   | Get all BirdNET species labels (not filtered by location)         |
-| GET    | `/species/taxonomy`           | `GetSpeciesTaxonomy`     | ❌   | Get detailed taxonomy data with subspecies and hierarchy          |
-| GET    | `/species/:code/thumbnail`    | `GetSpeciesThumbnail`    | ❌   | Get bird thumbnail image by species code (redirects to image URL) |
-| GET    | `/species/dictionary/:locale` | `ServeSpeciesDictionary` | ❌   | Precompressed per-locale species name dictionary (gzip JSON)      |
+| Method | Route                         | Handler                  | Auth | Description                                                                   |
+| ------ | ----------------------------- | ------------------------ | ---- | ----------------------------------------------------------------------------- |
+| GET    | `/species`                    | `GetSpeciesInfo`         | ❌   | Get extended species information including rarity status                      |
+| GET    | `/species/all`                | `GetAllSpecies`          | ❌   | Get all BirdNET species labels (not filtered by location)                     |
+| GET    | `/species/taxonomy`           | `GetSpeciesTaxonomy`     | ❌   | Get detailed taxonomy data with subspecies and hierarchy                      |
+| GET    | `/species/:code/thumbnail`    | `GetSpeciesThumbnail`    | ❌   | Get bird thumbnail image by species code (redirects to image URL)             |
+| GET    | `/species/dictionary/:locale` | `ServeSpeciesDictionary` | ❌   | Precompressed per-locale species name dictionary (gzip JSON)                  |
+| GET    | `/species/stats`              | `GetSpeciesStats`        | ❌   | Species statistics, enhanced database only (in `detections/species_stats.go`) |
+
+**Sound classes.** `scientific_name` on `/species` and `/species/taxonomy` also accepts a sound class name as detections report it ("Dog", "Human vocal", "Church_bell"). `/species` answers with the names only, and `/species/taxonomy` with `metadata.source` set to "unresolved", a `metadata.note` saying it is a sound class, and no `taxonomy`. `GET /taxonomy/tree/:scientific_name` answers 404 "Species not found" for a sound class. Any other name that is shorter than 3 characters or has no space answers 400.
 
 ### Server-Sent Events (`sse/sse.go`)
 
@@ -783,23 +891,30 @@ Requires enhanced (v2) database. Returns 409 Conflict with `error_key` `errors.p
 
 ### Models (`models/models.go`)
 
-| Method | Route                          | Handler                 | Auth | Description                                                                                                                                                                                                                                                                                    |
-| ------ | ------------------------------ | ----------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/models`                      | `ListModels`            | ❌   | List available classifier models                                                                                                                                                                                                                                                               |
-| GET    | `/models/catalog`              | `GetModelCatalog`       | ❌   | Model gallery catalog with install status                                                                                                                                                                                                                                                      |
-| GET    | `/models/regions`              | `GetModelRegions`       | ✅   | Region selector data: selectable regions, the auto-resolved region for the configured coordinates, and per-family resolution (auth-gated; never echoes raw coordinates)                                                                                                                        |
-| GET    | `/models/regions/:slug/map`    | `GetRegionCoverageMap`  | ❌   | Embedded SVG coverage map for a region slug (public static asset; strong ETag, honors If-None-Match; 404 when no map exists for the slug)                                                                                                                                                      |
-| GET    | `/models/installed`            | `GetInstalledModels`    | ❌   | List downloaded models                                                                                                                                                                                                                                                                         |
-| POST   | `/models/install/:id`          | `InstallModel`          | ✅   | Download and install a catalog variant; body `{variantId?, allowIncompatible?}`. A variant incompatible with the detected hardware is rejected with 409 unless `allowIncompatible:true`. 409 with `error_key` `analysis.gallery.errors.operationInProgress` while another model operation runs |
-| POST   | `/models/reinstall/:id`        | `ReinstallModel`        | ✅   | Re-download missing/corrupt files for installed model; 409 with `error_key` `analysis.gallery.errors.operationInProgress` while another model operation runs                                                                                                                                   |
-| DELETE | `/models/installed/:id`        | `UninstallModel`        | ✅   | Remove an installed model from disk; 409 while other models depend on it, or with `error_key` `analysis.gallery.errors.operationInProgress` while another model operation runs                                                                                                                 |
-| GET    | `/models/install/:id/progress` | `StreamInstallProgress` | ❌   | SSE stream for install/reinstall progress                                                                                                                                                                                                                                                      |
+| Method | Route                          | Handler                 | Auth | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------ | ------------------------------ | ----------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/models`                      | `ListModels`            | ❌   | List available classifier models                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| GET    | `/models/catalog`              | `GetModelCatalog`       | ❌   | Model gallery catalog with install status and each entry's licence and policy `documents`                                                                                                                                                                                                                                                                                                                                                                                               |
+| GET    | `/models/regions`              | `GetModelRegions`       | ✅   | Region selector data: selectable regions, the auto-resolved region for the configured coordinates, and per-family resolution (auth-gated; never echoes raw coordinates)                                                                                                                                                                                                                                                                                                                 |
+| GET    | `/models/regions/:slug/map`    | `GetRegionCoverageMap`  | ❌   | Embedded SVG coverage map for a region slug (public static asset; strong ETag, honors If-None-Match; 404 when no map exists for the slug)                                                                                                                                                                                                                                                                                                                                               |
+| GET    | `/models/documents/:sha256`    | `GetModelDocument`      | ✅   | Verified text of a hosted licence or policy document `{repo, kind, requiresAgreement, sha256, text}`; 404 for an unknown digest, 502 with `error_key` `analysis.gallery.errors.documentUnavailable` when the text cannot be fetched and verified                                                                                                                                                                                                                                        |
+| GET    | `/models/installed`            | `GetInstalledModels`    | ❌   | List downloaded models                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| POST   | `/models/install/:id`          | `InstallModel`          | ✅   | Download and install a catalog variant; body `{variantId?, allowIncompatible?, acceptedDocuments?}`. A variant incompatible with the detected hardware is rejected with 409 unless `allowIncompatible:true`. 409 with `error_key` `analysis.gallery.errors.operationInProgress` while another model operation runs. 409 with `error_key` `analysis.gallery.errors.agreementRequired` while a document of the entry's own repo has no recorded agreement and the body does not accept it |
+| POST   | `/models/reinstall/:id`        | `ReinstallModel`        | ✅   | Re-download missing/corrupt files for installed model; optional body `{acceptedDocuments?}`; 409 with `error_key` `analysis.gallery.errors.operationInProgress` while another model operation runs, or `analysis.gallery.errors.agreementRequired` while a document of the entry's own repo has no recorded agreement and the body does not accept it                                                                                                                                   |
+| DELETE | `/models/installed/:id`        | `UninstallModel`        | ✅   | Remove an installed model from disk; 409 while other models depend on it, or with `error_key` `analysis.gallery.errors.operationInProgress` while another model operation runs                                                                                                                                                                                                                                                                                                          |
+| GET    | `/models/install/:id/progress` | `StreamInstallProgress` | ❌   | SSE stream for install/reinstall progress                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 **Model dependencies** - A catalog entry can depend on other entries (for example a geomodel) whose files are installed with it. `GET /api/v2/models/catalog` lists them as `dependsOn` (catalog IDs, omitted when empty; it may name hidden components that the response does not list), and `totalSizeBytes` and each variant's `sizeBytes` include the dependency files. `hasGeomodel` is true when the default variant brings a geomodel, inline or through a dependency. `DELETE /api/v2/models/installed/:id` answers `409 Conflict` while another installed or downloading model depends on the entry, and changes nothing. The body carries `error_key` `analysis.gallery.errors.removeHasDependents` and `error_params` `{name, models, dependents}`, where `models` is the dependents' display names joined with `, ` and `dependents` is a list of `{id, name}`.
 
+**Registry ID** - `GET /api/v2/models/catalog` reports `registryId` (for example `BirdNET_V2.4`) on a classifier entry. It joins against the `registryId` of the items served by `GET /api/v2/models`, whose `id` is the config alias that audio source and stream `models` lists hold. That endpoint lists enabled models only, so a classifier that is not enabled has no item to join. Several catalog entries can share one registry ID (the regional BattyBirdNET models all report `Bat`), so one item can match more than one entry. The field is omitted for an entry that is not a classifier, such as the geomodel.
+
+**Model documents** - `GET /api/v2/models/catalog` lists the licence and policy documents of an entry as `documents` (`{repo, kind, requiresAgreement, agreed, sha256?, url?}`, omitted when the repo has none). A hosted document carries its `sha256`, an external one its `url`. The list holds the documents of the entry's own repo only, not those of files installed together with it, so Perch v2 reports its own licence and none of the geomodel repo's documents even though it downloads geomodel files. `kind` is an open vocabulary (`license`, `acceptable_use`, others) that the API passes through unchanged. The documents come from a registry compiled into the binary from the acoustic-models manifests, so a hand-edited `model-catalog.json` reports them for any entry whose `hugging_face_repo` still names a known repo. Document text is plain text that the server fetches from the repo at the pinned revision (through the same endpoint chain and mirror failover as model downloads), checks against the pinned `sha256` and caches under the config directory; text that does not verify is never served. `GET /api/v2/models/documents/:sha256` returns it. `agreed` is true when an agreement is recorded for that repo, kind and `sha256`. Agreements are stored in `model-agreements.json` in the config directory, written only by the server and never through the settings API; a changed document text has a new `sha256` and is not agreed until the user agrees to it. `POST /api/v2/models/install/:id` and `POST /api/v2/models/reinstall/:id` accept an optional `acceptedDocuments` list of `sha256` values: each must be a `requiresAgreement` document of that entry's own repo, else `400`, and its text must verify, else `502` as above. The agreements are recorded once the request is accepted with `202`, never for a request that is refused. An install, variant swap or reinstall is refused with `409` and `error_key` `analysis.gallery.errors.agreementRequired` while a `requiresAgreement` document of the entry's own repo is neither agreed nor in `acceptedDocuments`; `error_params` is `{name, documents}` with `documents` a list of `{repo, kind, sha256}`. The refusal records nothing and leaves no operation slot held. A request for an entry with nothing outstanding keeps working without a body, and an entry whose repo has no registered documents has nothing to agree to. Files installed automatically with another model (the geomodel files that arrive with Perch v2 or BirdNET+ v3.0, and `dependsOn` entries) are never gated; only the entry the user installs is.
+
+**Superseded models** - `GET /api/v2/models/catalog` reports `supersededBy` (`{id, name}`) on an entry that a newer catalog entry replaces. The field is omitted when nothing replaces the entry and when the successor is hidden, so the gallery never points at a model it does not list. A superseded entry stays installable.
+
 **One model operation at a time** - The model manager runs a single operation at once: install, variant swap, reinstall and uninstall all share one slot. The install and reinstall endpoints reserve it before answering 202, so a request made while another operation runs is refused synchronously with `409 Conflict` and nothing is changed. The body carries `error_key` `analysis.gallery.errors.operationInProgress` and `error_params` `{name, operation, running}`, where `name` is the display name of the model whose operation is running, `operation` is `install`, `reinstall` or `uninstall`, and `running` is `{id, name}`. A failed operation frees the slot at once. `GET /api/v2/models/install/:id/progress` reports `complete` only after the entry's operation has released the slot (an install holds it through the hot-load that follows the download), so a client can start the next operation as soon as it sees `complete`. This includes requests made during an uninstall.
 
-**GET /api/v2/models** - Returns all classifier models registered in the model registry. Each entry includes a config alias (`id`, used in audio source configuration), a human-readable display name, and the classifier `registryId` (e.g. `BirdNET_V2.4`) that joins against the registry-ID `defaultTargets` list served by `GET /api/v2/system/inference`.
+**GET /api/v2/models** - Returns the enabled classifier models (those listed in `models.enabled`). Each entry includes a config alias (`id`, used in audio source configuration), a human-readable display name, and the classifier `registryId` (e.g. `BirdNET_V2.4`) that joins against the registry-ID `defaultTargets` list served by `GET /api/v2/system/inference`. The `name` is the neutral model name with no backend suffix (for example `BirdNET v2.4`, not `BirdNET v2.4 (TFLite)`). A model that is loaded also carries `backend` (the live execution backend, for example `TFLite`, `ONNX` or `OpenVINO`) and `precision` (the live runtime precision, for example `FP32` or `INT8`); both are omitted for a model that is not loaded. They describe the host, so like the catalog's recommendation fields they are omitted for an anonymous request on an instance that requires authentication. Every entry carries `state`: `loaded` (the model is loaded and can run), `failed` (enabled, not loaded, and its last load failed) or `pending` (enabled, not loaded, no load error on record). The state is not host data, so it is reported to every caller. A successful install, reinstall or uninstall also sends a topology change event on the SSE stream, so clients refetch the list.
 
 **Response:**
 
@@ -807,15 +922,19 @@ Requires enhanced (v2) database. Returns 409 Conflict with `error_key` `errors.p
 [
   {
     "id": "birdnet",
-    "name": "BirdNET GLOBAL 6K V2.4",
+    "name": "BirdNET v2.4",
     "registryId": "BirdNET_V2.4",
-    "category": "bird"
+    "category": "bird",
+    "backend": "ONNX",
+    "precision": "INT8",
+    "state": "loaded"
   },
   {
     "id": "perch_v2",
-    "name": "Google Perch V2",
+    "name": "Google Perch v2",
     "registryId": "Perch_V2",
-    "category": "bird"
+    "category": "bird",
+    "state": "pending"
   }
 ]
 ```
