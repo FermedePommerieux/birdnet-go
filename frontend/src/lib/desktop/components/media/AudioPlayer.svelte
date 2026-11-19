@@ -54,6 +54,14 @@
     playButtonLabelKey,
     probeAudioSource,
   } from '$lib/utils/audio';
+  import { formatTime } from '$lib/utils/formatters';
+  import {
+    clampSeconds,
+    seekKeyAction,
+    seekSliderValueText,
+    seekTimeFromPointer,
+    usableDuration,
+  } from '$lib/utils/seek';
   import {
     getAudioContext,
     isAudioContextSupported,
@@ -177,12 +185,12 @@
   }: Props = $props();
 
   // Audio and UI elements
-  let audioElement: HTMLAudioElement;
+  let audioElement: HTMLAudioElement | undefined;
   let playerContainer: HTMLDivElement;
   // svelte-ignore non_reactive_update
   let playPauseButton!: HTMLButtonElement; // Template-only binding
   // svelte-ignore non_reactive_update
-  let progressBar: HTMLDivElement; // Template-only binding
+  let progressBar: HTMLDivElement; // Bound in the template, read by handleProgressClick
   // svelte-ignore non_reactive_update
   let spectrogramImage: HTMLImageElement; // Template-only binding
 
@@ -195,6 +203,9 @@
   // Bats vs Audio Settings) closed, so only one is ever open at a time.
   let closeAudibleBatsSignal = $state(0);
   let closeAudioSettingsSignal = $state(0);
+  // Keep the hover-only overlay controls visible while one of their popovers is open
+  let audioSettingsMenuOpen = $state(false);
+  let audibleBatsMenuOpen = $state(false);
   let progress = $state(0);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
@@ -260,7 +271,15 @@
 
   // Audio processing state
   let audioContext: AudioContext | null = null;
-  let isInitializingContext = $state(false);
+  // The audio context start in flight, shared by every play press that arrives while
+  // it runs.
+  let contextStart: Promise<AudioContext | null> | undefined;
+  // Identifies the latest play request. A request that finds a newer id after its
+  // wait (another press, a stop, a source swap) must not play.
+  let playRequestId = 0;
+  const cancelPendingPlay = () => {
+    playRequestId++;
+  };
   let audioNodes: AudioNodeChain | null = null;
 
   // Cleanup tracking for memory leak prevention
@@ -479,12 +498,6 @@
   const progressId = $derived(`progress-${detectionId}`);
 
   // Utility functions
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   // Convert mouse/touch X position to time in seconds
   const xToTime = (clientX: number): number => {
     if (!playerContainer || !isFinite(duration) || duration <= 0) return 0;
@@ -786,9 +799,12 @@
     }
   };
 
-  const playSelection = () => {
-    if (!audioElement || selectionStartSec === null || selectionEndSec === null) return;
-    ensurePlaybackSource();
+  const playSelection = async () => {
+    if (!audioElement || !hasActiveSelection()) return;
+    const current = await prepareToPlay();
+    // The request may have been superseded, the player unmounted, or the selection
+    // cleared or moved, while the audio context started.
+    if (!current || !audioElement || selectionStartSec === null || selectionEndSec === null) return;
 
     const start = Math.min(selectionStartSec, selectionEndSec);
     const end = Math.max(selectionStartSec, selectionEndSec);
@@ -799,15 +815,16 @@
     }
 
     audioElement.currentTime = start;
-    audioElement
-      .play()
-      .then(() => {
-        isPlayingSelection = true;
-        scheduleSelectionEnd(start, end);
-      })
-      .catch((err: unknown) => {
-        logger.error('Failed to play selection:', err);
-      });
+    try {
+      await audioElement.play();
+    } catch (err) {
+      // While a load retry is pending handlePlayRejection queues the press, and the
+      // queued play resumes the whole clip, not this selection: drop the press instead.
+      if (!loadRetryPending()) handlePlayRejection(err);
+      return;
+    }
+    isPlayingSelection = true;
+    scheduleSelectionEnd(start, end);
   };
 
   const scheduleSelectionEnd = (start: number, end: number) => {
@@ -829,6 +846,7 @@
   };
 
   const stopSelection = () => {
+    cancelPendingPlay();
     if (!audioElement) return;
     if (selectionPlaybackTimeout) {
       clearTimeout(selectionPlaybackTimeout);
@@ -944,6 +962,7 @@
   // bats is turned off (currentSource).
   function swapProcessedSource(url: string) {
     if (!audioElement || audibleBats.active) return;
+    cancelPendingPlay();
     const pos = audioElement.currentTime;
     replaceSource(url);
     audioElement.currentTime = pos;
@@ -996,6 +1015,8 @@
     }
 
     isProcessing = true;
+    // A play press still waiting for the audio context must not start the old clip.
+    cancelPendingPlay();
     // Pause playback while backend applies filters
     if (isPlaying && audioElement) {
       audioElement.pause();
@@ -1268,10 +1289,14 @@
     }
   }
 
+  // Whether a load retry, or the probe that may reschedule it, is pending.
+  const loadRetryPending = () =>
+    audioRetryTimer !== undefined || audioProbeController !== undefined;
+
   // Handle a rejected play(). While a retry timer is pending the retry can
   // still succeed, so only remember the play intent.
   function handlePlayRejection(err: unknown) {
-    if (audioRetryTimer !== undefined || audioProbeController !== undefined) {
+    if (loadRetryPending()) {
       playRequestedAfterRetry = true;
       return;
     }
@@ -1362,35 +1387,39 @@
     audioElement.load();
   }
 
-  // Audio event handlers
-  const handlePlayPause = async () => {
-    if (!audioElement) return;
-
-    if (!audioElement.paused && !audioElement.error) {
-      audioElement.pause();
-      return;
-    }
-
+  // Get the element ready for a play the user asked for: the playback source, a
+  // reload when the element failed, and the Web Audio graph (gain, high-pass,
+  // compressor). The play button and selection play both start here, so whichever
+  // comes first builds the graph, and presses that arrive while the audio context
+  // starts wait for the same start. Resolves true only when this is still the latest
+  // play request and the component is mounted: a newer press, a stop or a source
+  // swap during the wait cancels it.
+  const prepareToPlay = async (): Promise<boolean> => {
+    if (!audioElement) return false;
     error = null;
     ensurePlaybackSource();
     // A failed element cannot play (retries exhausted, or a retry timer pending):
     // reload it now instead of swallowing the click.
     if (audioElement.error) reloadAfterFailure();
+    // Taken after the source work above, which cancels older requests itself.
+    const requestId = ++playRequestId;
 
     // Initialize the audio context on first play, and re-enter whenever the
     // graph is not attached OR the context has fallen back to suspended
     // (e.g. tab backgrounding / audio-session interruption) so
     // getAudioContext() resumes it. Without the state re-check, an
     // already-attached graph on a re-suspended context plays silently.
-    // Guard against rapid clicks that could create multiple AudioContexts.
-    if ((!audioNodes || audioContext?.state !== 'running') && !isInitializingContext) {
-      isInitializingContext = true;
+    if (!audioNodes || audioContext?.state !== 'running') {
+      // Presses during the start share it, so it runs once.
+      contextStart ??= initializeAudioContext();
       try {
-        audioContext = await initializeAudioContext();
+        audioContext = await contextStart;
+        if (!audioElement) return false;
         // Attach the Web Audio graph only when the context is running;
         // while suspended the element plays through native output and the
         // graph is deferred to a later play (see attachAudioGraphWhenRunning).
-        audioNodes = attachAudioGraphWhenRunning(audioContext, audioElement, audioNodes, {
+        // The press that resumes first attaches it; later ones reuse it.
+        audioNodes ??= attachAudioGraphWhenRunning(audioContext, audioElement, null, {
           gainDb: gainValue,
           highPassFreq: filterFreq,
           includeCompressor: true,
@@ -1406,18 +1435,24 @@
         logger.warn('Audio graph setup failed, playing without processing', err);
         audioContextAvailable = false;
       } finally {
-        isInitializingContext = false;
+        contextStart = undefined;
       }
     }
+    return audioElement !== undefined && requestId === playRequestId;
+  };
 
-    // Safety check: component may have unmounted during async initialization
+  // Audio event handlers
+  const handlePlayPause = async () => {
     if (!audioElement) return;
 
-    try {
-      await audioElement.play();
-    } catch (err) {
-      handlePlayRejection(err);
+    if (!audioElement.paused && !audioElement.error) {
+      audioElement.pause();
+      return;
     }
+
+    const current = await prepareToPlay();
+    if (!current || !audioElement) return;
+    await audioElement.play().catch(handlePlayRejection);
   };
 
   const updateProgress = () => {
@@ -1483,21 +1518,41 @@
     consumePendingPlay();
   };
 
+  // Usable clip length and position for seeking and the inline progress bar's slider semantics
+  const seekMax = $derived(usableDuration(duration));
+  const seekNow = $derived(clampSeconds(currentTime, seekMax));
+  const seekValueText = $derived(seekSliderValueText(seekNow, seekMax));
+
+  // What the screen reader status region says about the spectrogram. It follows the same
+  // conditions as the visible overlays: a rate resolve or an in-flight load is loading, and a
+  // load that has given up (retries spent, a terminal status or the loader timeout) reads as
+  // unavailable.
+  const spectrogramStatusText = $derived.by(() => {
+    if (spectrogramLoader.loading || rateResolvePending) {
+      return t('components.audio.spectrogramLoading');
+    }
+    if (spectrogramLoader.error) return t('components.audio.spectrogramUnavailable');
+    return t('components.audio.spectrogramLoaded');
+  });
+
+  // Seek to an absolute position. The shown position is refreshed at once so a paused
+  // player reflects the seek before the next key press computes its target from it.
+  const seekTo = (seconds: number) => {
+    if (!audioElement || seekMax <= 0) return;
+    audioElement.currentTime = clampSeconds(seconds, seekMax);
+    updateProgress();
+  };
+
+  const handleProgressKeydown = (event: KeyboardEvent) => {
+    const action = seekKeyAction(event, seekNow, seekMax);
+    if (action.preventDefault) event.preventDefault();
+    if (action.target !== null) seekTo(action.target);
+  };
+
   const handleProgressClick = (event: MouseEvent) => {
-    if (!audioElement || !isFinite(duration) || duration <= 0) return;
-
-    // Use the toolbar's own progress bar if the event target is inside one,
-    // otherwise fall back to playerContainer (always rendered).
-    const targetEl = (event.target as HTMLElement)?.closest('.progress-bar') as HTMLElement | null;
-    const refEl = targetEl ?? progressBar ?? playerContainer;
-    if (!refEl) return;
-
-    const rect = refEl.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickPercent = clickX / rect.width;
-    const newTime = clickPercent * duration;
-
-    audioElement.currentTime = Math.max(0, Math.min(newTime, duration));
+    if (!progressBar) return;
+    const target = seekTimeFromPointer(event.clientX, progressBar.getBoundingClientRect(), seekMax);
+    if (target !== null) seekTo(target);
   };
 
   // Volume control
@@ -1541,6 +1596,7 @@
     audibleBatsPendingFraction = frac;
     audibleBatsPendingAutoplay = isPlaying || playRequestedAfterRetry;
     resetRetryState();
+    cancelPendingPlay();
     replaceSource(newSrc);
     audioElement.load();
   }
@@ -2173,6 +2229,7 @@
       const absoluteUrl = new URL(audioUrl, window.location.origin).href;
       if (audioElement.src !== absoluteUrl) {
         debugLog('audioUrl changed, updating src', { from: audioElement.src, to: audioUrl });
+        cancelPendingPlay();
         audioElement.src = audioUrl;
         // Cancel in-flight processing and clean up state from previous audio
         if (processDebounceTimer) {
@@ -2215,6 +2272,41 @@
     }
   });
 
+  const handleSelectionKeydown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && (selectionStartSec !== null || selectionEndSec !== null)) {
+      clearSelection();
+    }
+  };
+
+  // Prevent native browser selection during drag operations
+  const handleSelectStart = (e: Event) => {
+    if (isDragSelecting || draggingHandle || isScrubbing) e.preventDefault();
+  };
+
+  // Document listeners for selection drag, click-to-seek and Escape. They follow
+  // enableClipExtraction, which can change while the player is mounted.
+  $effect(() => {
+    if (!enableClipExtraction) return;
+    document.addEventListener('mousemove', handleSelectionMouseMove);
+    document.addEventListener('mouseup', handleSelectionMouseUp);
+    document.addEventListener('keydown', handleSelectionKeydown);
+    document.addEventListener('selectstart', handleSelectStart);
+    return () => {
+      document.removeEventListener('mousemove', handleSelectionMouseMove);
+      document.removeEventListener('mouseup', handleSelectionMouseUp);
+      document.removeEventListener('keydown', handleSelectionKeydown);
+      document.removeEventListener('selectstart', handleSelectStart);
+      // A gesture cut off here never sees its mouseup or touchend, so end it now;
+      // otherwise it would resume when extraction is switched on again.
+      if (isDragSelecting) normalizeSelection();
+      isDragSelecting = false;
+      draggingHandle = null;
+      isScrubbing = false;
+      mouseDownInPlayer = false;
+      if (playerContainer) playerContainer.style.touchAction = '';
+    };
+  });
+
   // Lifecycle
   onMount(() => {
     debugLog('onMount: component mounted', {
@@ -2255,7 +2347,7 @@
         // Clear any pending delay timeout and immediately signal play start
         clearPlayEndTimeout();
         // Apply playback rate when starting
-        applyPlaybackRate(audioElement, playbackSpeed);
+        if (audioElement) applyPlaybackRate(audioElement, playbackSpeed);
         if (onPlayStart) {
           onPlayStart();
         }
@@ -2378,36 +2470,6 @@
       spectrogramLoader.setLoading(false);
     }
 
-    // Global listeners for selection drag
-    if (enableClipExtraction) {
-      addTrackedEventListener(
-        document as unknown as HTMLElement,
-        'mousemove',
-        handleSelectionMouseMove as EventListener
-      );
-      addTrackedEventListener(
-        document as unknown as HTMLElement,
-        'mouseup',
-        handleSelectionMouseUp as EventListener
-      );
-      addTrackedEventListener(document as unknown as HTMLElement, 'keydown', ((
-        e: KeyboardEvent
-      ) => {
-        if (e.key === 'Escape') {
-          if (selectionStartSec !== null || selectionEndSec !== null) {
-            clearSelection();
-          }
-        }
-      }) as EventListener);
-
-      // Prevent native browser selection during drag operations
-      addTrackedEventListener(document as unknown as HTMLElement, 'selectstart', ((e: Event) => {
-        if (isDragSelecting || draggingHandle || isScrubbing) {
-          e.preventDefault();
-        }
-      }) as EventListener);
-    }
-
     // Cleanup function (Svelte 5 pattern)
     return () => {
       debugLog('cleanup: component destroying', {
@@ -2455,6 +2517,8 @@
       if (audioElement) {
         audioElement.pause();
         audioElement.src = '';
+        // Async work still in flight (context start, probes) checks this and stops.
+        audioElement = undefined;
       }
 
       // Clean up Web Audio API resources using shared utilities
@@ -2527,12 +2591,11 @@
   ontouchend={enableClipExtraction ? handleSelectionTouchEnd : undefined}
 >
   <!-- Screen reader announcement for the spectrogram state (the rate resolve counts
-       as loading). Always rendered, so screen readers hear each change of its text. -->
+       as loading, a failed load reads as unavailable). Always rendered, so screen
+       readers hear each change of its text. -->
   <div class="sr-only" role="status">
     {#if spectrogramUrl || rateResolvePending}
-      {spectrogramLoader.loading || rateResolvePending
-        ? t('components.audio.spectrogramLoading')
-        : t('components.audio.spectrogramLoaded')}
+      {spectrogramStatusText}
     {/if}
   </div>
 
@@ -2544,7 +2607,7 @@
         class="absolute inset-0 flex items-center justify-center bg-[var(--color-base-200)]/75 rounded-md border border-[var(--color-base-300)]"
       >
         <div
-          class="loading loading-spinner loading-sm md:loading-md text-[var(--color-primary)]"
+          class="loading loading-spinner loading-sm md:loading-md text-[var(--text-primary)]"
           aria-hidden="true"
         ></div>
       </div>
@@ -2585,7 +2648,7 @@
             class="size-6 sm:size-8 mx-auto mb-1 text-[var(--color-base-content)]/30"
             aria-hidden="true"
           />
-          <span class="text-xs sm:text-sm text-[var(--color-base-content)]/50"
+          <span class="text-xs sm:text-sm text-[color:var(--text-muted)]"
             >{t('components.audio.spectrogramUnavailable')}</span
           >
         </div>
@@ -2659,8 +2722,9 @@
        it for bat detections. -->
   {#if showControls}
     <div
-      class="absolute top-2 right-2 flex items-center gap-1 transition-opacity duration-200"
-      class:opacity-0={!isMobile}
+      data-testid="audio-overlay-controls"
+      class="absolute top-2 right-2 flex items-center gap-1 transition-opacity duration-200 has-[:focus-visible]:opacity-100"
+      class:opacity-0={!isMobile && !audioSettingsMenuOpen && !audibleBatsMenuOpen}
       class:group-hover:opacity-100={!isMobile}
     >
       {#if isBatSpectrogram}
@@ -2672,7 +2736,11 @@
           closeSignal={closeAudibleBatsSignal}
           onEnable={settings => audibleBats.enable(settings)}
           onDisable={() => audibleBats.disable()}
-          onMenuOpen={() => closeAudioSettingsSignal++}
+          onMenuOpen={() => {
+            audibleBatsMenuOpen = true;
+            closeAudioSettingsSignal++;
+          }}
+          onMenuClose={() => (audibleBatsMenuOpen = false)}
         />
       {/if}
       <AudioSettingsButton
@@ -2685,7 +2753,11 @@
         onSpeedChange={handleSpeedChange}
         disabled={!audioContextAvailable}
         closeSignal={closeAudioSettingsSignal}
-        onMenuOpen={() => closeAudibleBatsSignal++}
+        onMenuOpen={() => {
+          audioSettingsMenuOpen = true;
+          closeAudibleBatsSignal++;
+        }}
+        onMenuClose={() => (audioSettingsMenuOpen = false)}
       />
     </div>
   {/if}
@@ -2807,7 +2879,7 @@
   <!-- Bottom overlay controls (hidden when toolbar is used) -->
   {#if !enableClipExtraction}
     <div
-      class="absolute bottom-0 left-0 right-0 bg-black/25 p-1 rounded-b-md transition-opacity duration-300"
+      class="absolute bottom-0 left-0 right-0 bg-black/25 p-1 rounded-b-md transition-opacity duration-300 has-[:focus-visible]:opacity-100"
       class:opacity-0={!isMobile}
       class:group-hover:opacity-100={!isMobile}
       class:opacity-100={isMobile}
@@ -2838,21 +2910,16 @@
           bind:this={progressBar}
           id={progressId}
           class="grow bg-gray-200 rounded-full h-1.5 mx-2 cursor-pointer"
-          role="button"
+          role="slider"
           tabindex="0"
-          aria-label={t('media.audio.seekProgress', {
-            current: Math.floor(currentTime),
-            total: Math.floor(duration),
-          })}
+          aria-label={t('media.audio.seek')}
+          aria-valuemin={0}
+          aria-valuemax={seekMax}
+          aria-valuenow={seekNow}
+          aria-valuetext={seekValueText}
+          aria-disabled={seekMax <= 0 ? 'true' : undefined}
           onclick={handleProgressClick}
-          onkeydown={e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              const rect = progressBar.getBoundingClientRect();
-              const centerX = rect.left + rect.width / 2;
-              handleProgressClick(new MouseEvent('click', { clientX: centerX }));
-            }
-          }}
+          onkeydown={handleProgressKeydown}
         >
           <div
             class="bg-primary h-1.5 rounded-full transition-all duration-100"
@@ -2884,7 +2951,9 @@
       role="alert"
       class="pointer-events-none absolute inset-0 flex items-center justify-center bg-[color-mix(in_srgb,var(--color-error)_15%,transparent)] rounded-md"
     >
-      <span class="text-[var(--color-error)] text-sm">{error}</span>
+      <span class="rounded bg-[var(--color-base-100)] px-2 py-0.5 text-sm text-[var(--text-error)]"
+        >{error}</span
+      >
     </div>
   {/if}
 </div>
@@ -2898,7 +2967,7 @@
     {progress}
     loop={loopEnabled}
     onPlayPause={handlePlayPause}
-    onSeek={handleProgressClick}
+    onSeek={seekTo}
     onLoopToggle={() => (loopEnabled = !loopEnabled)}
     selectionStart={selectionStartSec !== null && selectionEndSec !== null
       ? Math.min(selectionStartSec, selectionEndSec)
