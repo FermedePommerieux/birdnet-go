@@ -11,7 +11,7 @@ OpenVINO is an optional inference backend that can run BirdNET-Go's neural netwo
 
 **You want this if:** you run on an Intel machine with an integrated GPU and want to offload inference to it, or you run a Raspberry Pi 5 and want to opt into the OpenVINO CPU path with `birdnet.backend: openvino` or `birdnet.openvinodevice: cpu`.
 
-**You can skip this if:** you are on a Raspberry Pi 4 or older ARM board (no native f16, OpenVINO is slower there), on Windows or macOS (the OpenVINO backend is Linux-only), or you are happy with ONNX Runtime performance.
+**You can skip this if:** you are on a Raspberry Pi 4 or older ARM board (no native f16, OpenVINO is slower there), on macOS (no OpenVINO backend), or you are happy with ONNX Runtime performance.
 
 **Docker / container installs:** The published Linux images bundle the OpenVINO runtime libraries. amd64 images also bundle the Intel GPU compute runtime (NEO/OpenCL driver), including Intel's legacy driver track for older Gen8, Gen9 and Gen11 iGPUs (for example Coffee Lake UHD 630), so iGPU offload works as soon as you pass the device through. See [Enabling OpenVINO in Docker](#enabling-openvino-in-docker).
 
@@ -26,6 +26,7 @@ OpenVINO is applied per model, only where it is known to be correct. Everything 
 | BirdNET v2.4 (stock classifier)            |        Yes        |      f32      | Forced to f32 on every device. The GPU f16 kernel miscompiles this model (f32 on the iGPU is still faster than ORT CPU), and on the ARM A76 CPU f16 drops the scores of windows dominated by low-frequency noise such as wind to about zero. On arm64, `auto` with the default device runs it on ONNX Runtime (unless ONNX Runtime is missing); OpenVINO at f32 was slower or tied and used 114 to 166 MB more memory on a Pi 4 and a Pi 5. INT8 builds follow the INT8 row.                                                                                                                                                                          |
 | Perch v2 (`no_dft` variant)                |        Yes        |      f32      | Forced to f32 on the GPU: the GPU f16 kernel returns NaN logits on Intel Arc. On the ARM A76 CPU it runs at f16, only when you opt in (`auto` keeps arm64 on ONNX Runtime). The stock `perch_v2.onnx` (with the DFT layer) is **not** OpenVINO-eligible; the `no_dft` variant is.                                                                                                                                                                                                                                                                                                                                                                     |
 | BattyBirdNET (bat embedding)               |        Yes        |      f32      | Forced to f32 on every device (its embedding head overflows at f16).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| BirdNET+ v3.0 and BirdNET v3.0 preview     |        Yes        |      f32      | Forced to f32 on every device: at f16 the scores are wrong on the ARM A76 CPU and on Intel GPUs. On arm64, `auto` with the default device runs them on ONNX Runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | INT8 BirdNET v2.4 (e.g. the arm64 default) | Only when forced  | f32 (forced)  | On `auto`, INT8 runs on ONNX Runtime CPU on every device: INT8 weights are not validated on OpenVINO, and ONNX Runtime runs them faster than OpenVINO at f32 on a Pi 5. Setting `birdnet.backend: openvino` runs it on OpenVINO at f32 (correct, but slower than ONNX Runtime on a Pi 5). The same applies to a BirdNET v2.4 model file whose name carries no precision token (`fp32`, `fp16` or `int8`), or more than one, since its precision cannot be verified; to keep OpenVINO on `auto`, name the file with exactly one precision token that matches the model's actual precision (`fp32` or `fp16`). INT8 Perch builds are ONNX Runtime only. |
 | Custom / other models                      |        No         |       -       | Fall back to ONNX Runtime.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
@@ -47,7 +48,7 @@ Device resolution:
 In practice:
 
 - **amd64 + Intel iGPU** → `auto`/`auto` offloads BirdNET v2.4 and Perch v2 to the iGPU.
-- **Raspberry Pi 5 (A76)** → `auto`/`auto` runs every ONNX model on ONNX Runtime and does not load OpenVINO while ONNX Runtime is usable (there is no GPU); a native install that still uses the embedded TFLite model stays on TFLite, so select an eligible ONNX model first. To use the OpenVINO CPU (f32 for BirdNET v2.4, BirdNET v3.0 and the bat model, f16 for Perch v2), set `birdnet.backend: openvino`; `birdnet.openvinodevice: cpu` alone also works for models with eligible weights, while INT8 or unrecognized weights additionally need `birdnet.backend: openvino`. Without ONNX Runtime, an FP32 BirdNET v2.4 build still runs on the OpenVINO CPU on `auto`.
+- **Raspberry Pi 5 (A76)** → `auto`/`auto` runs every ONNX model on ONNX Runtime and does not load OpenVINO while ONNX Runtime is usable (there is no GPU); a native install that still uses the embedded TFLite model stays on TFLite, so select an eligible ONNX model first. To use the OpenVINO CPU (f32 for BirdNET v2.4, BirdNET v3.0, BirdNET+ v3.0 and the bat model, f16 for Perch v2), set `birdnet.backend: openvino`; `birdnet.openvinodevice: cpu` alone also works for models with eligible weights, while INT8 or unrecognized weights additionally need `birdnet.backend: openvino`. Without ONNX Runtime, an FP32 BirdNET v2.4 build still runs on the OpenVINO CPU on `auto`.
 - **Anything else** → OpenVINO is declined and ORT is used.
 
 ## Enabling OpenVINO in Docker
@@ -181,6 +182,18 @@ birdnet:
 
 Start BirdNET-Go and [verify](#verifying-openvino-is-active).
 
+## Enabling OpenVINO on Windows
+
+The Windows x86-64 binaries are built with the OpenVINO backend compiled in, but the OpenVINO runtime is not included. Install it yourself, either the OpenVINO Toolkit package from Intel (for example through `winget`) or Intel's archive release. You do not need to run `setupvars` or edit `PATH`: BirdNET-Go looks for `openvino_c.dll` in this order and uses the first one it finds.
+
+1. The directory of `birdnet-go.exe`.
+2. Every absolute directory in `PATH` (relative entries are skipped).
+3. `%INTEL_OPENVINO_DIR%\runtime\bin\intel64\Release`, when the variable holds an absolute path.
+4. `%ProgramFiles(x86)%\Intel\openvino*`, newest version first.
+5. The OpenVINO Toolkit package under `%ProgramFiles%\WindowsApps`, newest version first. Non-elevated processes cannot list that directory, so the package location is also read from the system package registry.
+
+The bundled oneTBB library beside the runtime is found automatically. To use a specific runtime, set `birdnet.openvinopath` to the full path of `openvino_c.dll`; a configured path is never replaced by the search. If nothing is found, BirdNET-Go keeps running on ONNX Runtime. The startup log line `OpenVINO runtime loaded` shows which library was used and whether it came from configuration. For GPU offload the host also needs a current Intel graphics driver.
+
 ## Verifying OpenVINO Is Active
 
 Do not assume it worked; confirm it. There are four independent ways.
@@ -248,6 +261,8 @@ ldconfig -p | grep libopenvino_c
 
 Install the runtime ([Step 1](#step-1-install-the-openvino-runtime-libraries)), run `sudo ldconfig`, or set `birdnet.openvinopath` to the exact library path. Confirm the runtime release matches the version BirdNET-Go is built against.
 
+On Windows the same message ending in `the specified module could not be found` means `openvino_c.dll` was not found by the search described in [Enabling OpenVINO on Windows](#enabling-openvino-on-windows), or one of the DLLs it depends on is missing. Install the runtime, or set `birdnet.openvinopath` to the full path of `openvino_c.dll`.
+
 ### Permission denied opening `/dev/dri/renderD128`
 
 The runtime user is not in the render group. In Docker the entrypoint handles this when the device is passed; for rootless Podman add `--group-add keep-groups`. On native installs add the service user to the `render` group and restart.
@@ -258,7 +273,7 @@ Check the model is OpenVINO-eligible (see [What OpenVINO Accelerates](#what-open
 
 ### Detections look wrong after forcing GPU f16
 
-Do not override precision manually. BirdNET v2.4 is intentionally run at f32 on every device because f16 breaks it on both the iGPU and the ARM A76 CPU; the bat embedding model and BirdNET v3.0 are f32 on every device as well. `auto` handles this for you.
+Do not override precision manually. BirdNET v2.4 is intentionally run at f32 on every device because f16 breaks it on both the iGPU and the ARM A76 CPU; the bat embedding model, BirdNET v3.0 and BirdNET+ v3.0 are f32 on every device as well. `auto` handles this for you.
 
 ## Platform Support Matrix
 
@@ -266,7 +281,7 @@ Do not override precision manually. BirdNET v2.4 is intentionally run at f32 on 
 | -------- | --------------- | :------------------------: | :-------------------: | :--------------------------------------------------------: |
 | Linux    | x86-64 (amd64)  |            Yes             | Yes (Intel iGPU/dGPU) |                Benchmark only (no f16 win)                 |
 | Linux    | aarch64 (arm64) |            Yes             |           -           | Opt-in: `backend: openvino` or device `cpu`; ORT on `auto` |
-| Windows  | x86-64          |             -              |           -           |                             -                              |
+| Windows  | x86-64          |            Yes             | Yes (Intel iGPU/dGPU) |                Benchmark only (no f16 win)                 |
 | macOS    | any             |             -              |           -           |                             -                              |
 
 ## Further Reading

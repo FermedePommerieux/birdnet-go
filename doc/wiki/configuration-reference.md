@@ -67,7 +67,7 @@ BirdNET configuration
 | `birdnet.threads` | integer | number of CPU threads to use for analysis |
 | `birdnet.locale` | string | language to use for labels |
 | `birdnet.rangefilter.debug` | boolean | true to enable debug mode |
-| `birdnet.rangefilter.model` | string | range filter model version: "legacy" for v1, "v3" for geomodel v3.0, or empty/default for v2 |
+| `birdnet.rangefilter.model` | string | range filter model version: "legacy" for v1, "v3" for geomodel v3.0, or empty/default for v2; an installed geomodel replaces the stock v1 and v2 models |
 | `birdnet.rangefilter.modelpath` | string | path to external meta model file (empty for embedded) |
 | `birdnet.rangefilter.labelspath` | string | path to geomodel labels file (required when geomodel differs from classifier labels) |
 | `birdnet.rangefilter.threshold` | number | rangefilter species occurrence threshold |
@@ -76,7 +76,7 @@ BirdNET configuration
 | `birdnet.labelpath` | string | path to external label file (empty for embedded) |
 | `birdnet.usexnnpack` | boolean | true to use XNNPACK delegate for inference acceleration |
 | `birdnet.onnxruntimepath` | string | path to ONNX Runtime shared library (required for ONNX models) |
-| `birdnet.openvinopath` | string | path to libopenvino_c shared library (OpenVINO image variants only) |
+| `birdnet.openvinopath` | string | path to the OpenVINO C runtime (libopenvino_c.so, or openvino_c.dll on Windows); empty uses the default library name, and on Windows first searches the known install locations |
 | `birdnet.backend` | string | inference backend preference: "auto" (default), "onnx", or "openvino" |
 | `birdnet.openvinodevice` | string | OpenVINO device preference: "auto" (default), "cpu", or "gpu" |
 | `birdnet.huggingfaceendpoint` | string | model download host, e.g. "https://hf-mirror.com" where huggingface.co is blocked; empty falls back to $HF_ENDPOINT then https://huggingface.co |
@@ -107,6 +107,18 @@ BirdNETV3Config holds configuration for the BirdNET v3.0 acoustic classifier.
 | `birdnetv3.threshold` | number | confidence threshold for detections (applied only when OverrideThreshold is true) |
 | `birdnetv3.locale` | string | locale for species label translation |
 
+## birdnetplus
+
+BirdNETPlusConfig holds configuration for the BirdNET+ v3.0 acoustic classifier.
+
+| Setting | Type | Description |
+|---------|------|-------------|
+| `birdnetplus.modelpath` | string | path to BirdNET+ v3.0 ONNX model file |
+| `birdnetplus.labelpath` | string | path to BirdNET+ v3.0 label file |
+| `birdnetplus.overridethreshold` | boolean | when true, gate BirdNET+ v3.0 detections on Threshold instead of following BirdNET.Threshold |
+| `birdnetplus.threshold` | number | confidence threshold for detections (applied only when OverrideThreshold is true) |
+| `birdnetplus.locale` | string | locale for species label translation |
+
 ## bat
 
 BatConfig holds configuration for bat detection using BirdNET v2.4 embeddings.
@@ -121,6 +133,7 @@ BatConfig holds configuration for bat detection using BirdNET v2.4 embeddings.
 | `bat.nighttimeonly` | boolean | restrict bat detection to nighttime (civil dusk to civil dawn) |
 | `bat.falsepositivefilter.level` | integer | Filtering aggressivity level (0-5): 0=Off, 1=Lenient, 2=Moderate, 3=Balanced, 4=Strict, 5=Maximum |
 | `bat.ultrasonicfilter.enabled` | boolean | enable ultrasonic validation filter |
+| `bat.ultrasonicfilter.discardunlikely` | boolean | discard detections tagged unlikely instead of saving them; applies only while enabled |
 | `bat.ultrasonicfilter.cvthreshold` | number | detections with US frame CV below this are tagged unlikely |
 | `bat.ultrasonicfilter.fftsize` | integer | FFT window size in samples (a power of 2, at least 2) |
 | `bat.ultrasonicfilter.hopsize` | integer | STFT hop size in samples, 1 to fftsize |

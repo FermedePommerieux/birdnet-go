@@ -26,6 +26,9 @@ const logger = loggers.api;
 // SECURITY: Define request limits to prevent DoS
 const MAX_REQUEST_SIZE = 10 * 1024 * 1024; // 10MB
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
+// Safari rejects a failed fetch with TypeError('Load failed'); Chrome and
+// Firefox use the "Failed to fetch" and "NetworkError" texts.
+const SAFARI_FETCH_FAILURE = 'Load failed';
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
 // Guard: prevents multiple concurrent 401 redirects when parallel API calls
@@ -69,6 +72,8 @@ export class ApiError extends Error {
   isNetworkError: boolean;
   /** The server's i18n error_key when the error body carried one. */
   errorKey?: string;
+  /** The server's error_params, set together with errorKey when the body carried them. */
+  errorParams?: Record<string, unknown>;
 
   constructor(message: string, status: number, response: Response, isNetworkError = false) {
     super(message);
@@ -220,6 +225,7 @@ async function handleResponse<T = unknown>(response: Response): Promise<T> {
   if (!response.ok) {
     let serverMessage = '';
     let serverErrorKey: string | undefined;
+    let serverErrorParams: Record<string, unknown> | undefined;
 
     try {
       // SECURITY: Limit response size for error parsing
@@ -236,13 +242,13 @@ async function handleResponse<T = unknown>(response: Response): Promise<T> {
         // Try i18n translation via error_key first
         if (errorData.error_key && typeof errorData.error_key === 'string') {
           serverErrorKey = errorData.error_key;
-          const params =
+          serverErrorParams =
             errorData.error_params &&
             typeof errorData.error_params === 'object' &&
             !Array.isArray(errorData.error_params)
               ? (errorData.error_params as Record<string, unknown>)
-              : {};
-          const translated = t(errorData.error_key, params);
+              : undefined;
+          const translated = t(errorData.error_key, serverErrorParams ?? {});
           if (translated !== errorData.error_key) {
             serverMessage = translated;
           }
@@ -266,6 +272,7 @@ async function handleResponse<T = unknown>(response: Response): Promise<T> {
     const userMessage = serverMessage || getSecureErrorMessage(response.status);
     const apiError = new ApiError(userMessage, response.status, response);
     apiError.errorKey = serverErrorKey;
+    apiError.errorParams = serverErrorParams;
     throw apiError;
   }
 
@@ -358,6 +365,10 @@ interface FetchOptions extends Omit<RequestInit, 'body'> {
  * Headers in options.headers are merged over the defaults (including the CSRF
  * token) for each request, and options is never modified, so the retry after a
  * 403 merges them again over the refreshed token.
+ *
+ * A fetch rejected by the browser (Chrome and Firefox "Failed to fetch" or
+ * "NetworkError", Safari "Load failed") and the client-side timeout throw an
+ * ApiError with isNetworkError set.
  */
 export async function fetchWithCSRF<T = unknown>(
   url: string,
@@ -562,7 +573,11 @@ export async function fetchWithCSRF<T = unknown>(
         }
         throw new ApiError(t('errors.api.requestTimeout'), 408, new Response(), true);
       }
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      if (
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('NetworkError') ||
+        (error instanceof TypeError && error.message.includes(SAFARI_FETCH_FAILURE))
+      ) {
         throw new ApiError(t('errors.api.networkError'), 0, new Response(), true);
       }
     }

@@ -61,6 +61,10 @@ type ModelManager struct {
 	modelsDir    string
 	orchestrator *Orchestrator
 
+	// documents serves verified licence and policy text and keeps the recorded
+	// agreements. Set once by NewModelManager; never touched by the install paths.
+	documents *ModelDocuments
+
 	// unloadFn, when non-nil, replaces the direct orchestrator UnloadModel call so
 	// tests can force the unload-failure rollback branches of Uninstall and
 	// Reinstall. Those branches are reachable in production only via a
@@ -178,7 +182,7 @@ func NewModelManager(modelsDir string, orchestrator *Orchestrator, settings *con
 	if orchestrator != nil {
 		orchestrator.SetModelsDir(modelsDir)
 	}
-	return &ModelManager{
+	mm := &ModelManager{
 		modelsDir:    modelsDir,
 		orchestrator: orchestrator,
 		settings:     settings,
@@ -186,7 +190,16 @@ func NewModelManager(modelsDir string, orchestrator *Orchestrator, settings *con
 		downloading:  make(map[string]*DownloadState),
 		freeSpaceFn:  diskmanager.GetAvailableSpace,
 	}
+	mm.documents = newModelDocuments(
+		func() []string { return mm.orderedDownloadEndpoints(mm.configuredHuggingFaceEndpoint()) },
+		mm.noteWorkingEndpoint,
+	)
+	return mm
 }
+
+// Documents returns the service that serves verified licence and policy text and
+// records agreements. It is never nil.
+func (mm *ModelManager) Documents() *ModelDocuments { return mm.documents }
 
 // ModelInfos returns ModelInfo for all currently loaded models.
 func (mm *ModelManager) ModelInfos() []ModelInfo {
@@ -349,7 +362,7 @@ func (mm *ModelManager) ScanInstalled() {
 		// After loading models, check if any installed model has geomodel
 		// companion files on disk. If so, ensure the range filter config is
 		// up to date and reload the filter, unless the range filter is custom
-		// (see rangeFilterGalleryManaged). This handles the upgrade case
+		// (see rangeFilterReplaceableByGeomodel). This handles the upgrade case
 		// where a new binary adds geomodel support to existing models.
 		mm.ensureGeomodelConfig(log, installedIDs)
 
@@ -545,6 +558,8 @@ type familyFieldSet struct {
 // into s so callers can read or write a family's fields without naming the conf
 // struct; a nil pointer means the family has no such field and it must NOT be
 // written. ok is false for a nil settings pointer or an unknown registry ID.
+// The BirdNET v3.0 preview and BirdNET+ v3.0 map to separate settings sections, so
+// one family never rewrites the other's paths or threshold.
 //
 // The primary's Labels pointer is &s.BirdNET.LabelPath like every other family:
 // the "a variant swap must not disturb a user-configured label path" rule lives in
@@ -579,6 +594,14 @@ func familyFields(s *conf.Settings, registryID string) (familyFieldSet, bool) {
 			Threshold:         &s.BirdNETV3.Threshold,
 			OverrideThreshold: &s.BirdNETV3.OverrideThreshold,
 			Locale:            &s.BirdNETV3.Locale,
+		}, true
+	case RegistryIDBirdNETPlusV3:
+		return familyFieldSet{
+			Model:             &s.BirdNETPlus.ModelPath,
+			Labels:            &s.BirdNETPlus.LabelPath,
+			Threshold:         &s.BirdNETPlus.Threshold,
+			OverrideThreshold: &s.BirdNETPlus.OverrideThreshold,
+			Locale:            &s.BirdNETPlus.Locale,
 		}, true
 	case RegistryIDBSG:
 		return familyFieldSet{
@@ -711,8 +734,8 @@ func decideGeomodelOrphanAction(rf *conf.RangeFilterSettings, expectedModelPath,
 
 // ensureGeomodelConfig checks if any installed model has geomodel companion
 // files on disk and, if the range filter config doesn't already reflect them,
-// updates the config and reloads the range filter; a custom range filter (see
-// rangeFilterGalleryManaged) is left as it is, without a reload. When NO installed
+// updates the config and reloads the range filter, unless
+// rangeFilterReplaceableByGeomodel keeps the range filter as it is (no reload then). When NO installed
 // geomodel-capable model is matched, it runs the orphan self-heal so a persisted
 // config that references the gallery shared geomodel paths stays consistent with
 // reality (promote when the shared files exist, clear when they are absent).
@@ -757,7 +780,7 @@ func (mm *ModelManager) ensureGeomodelConfig(log logger.Logger, installedIDs []s
 // applyInstalledGeomodelConfig promotes the range filter config to match an
 // installed geomodel-capable model whose shared files are present on disk. It is
 // a no-op when the config already matches the expected paths and version, and for
-// a custom range filter (see rangeFilterGalleryManaged).
+// a range filter that rangeFilterReplaceableByGeomodel keeps.
 func (mm *ModelManager) applyInstalledGeomodelConfig(log logger.Logger, entry *CatalogEntry, catalogID string) {
 	// Build expected paths from catalog entry.
 	expectedModelPath := ""
@@ -778,7 +801,7 @@ func (mm *ModelManager) applyInstalledGeomodelConfig(log logger.Logger, entry *C
 	customRangeFilter := false
 	_, _, err := conf.UpdateSettings(func(_, updated *conf.Settings) error {
 		urf := updated.RangeFilterConfig()
-		if !mm.rangeFilterGalleryManaged(urf) {
+		if !mm.rangeFilterReplaceableByGeomodel(urf) {
 			// A custom range filter is the user's choice; never replace it.
 			customRangeFilter = true
 			return conf.ErrSettingsUnchanged
@@ -793,7 +816,8 @@ func (mm *ModelManager) applyInstalledGeomodelConfig(log logger.Logger, entry *C
 		// Config is stale or missing; update it.
 		log.Info("Applying geomodel config for installed model",
 			logger.String("catalog_id", catalogID),
-			logger.String("geomodel_version", entry.GeomodelVersion))
+			logger.String("geomodel_version", entry.GeomodelVersion),
+			logger.String("previous_model_path", urf.ModelPath))
 
 		urf.Model = entry.GeomodelVersion
 		urf.ModelPath = expectedModelPath
@@ -1549,8 +1573,8 @@ func (mm *ModelManager) replaceVariant(ctx context.Context, entry *CatalogEntry,
 	//    resolves the new variant. Config writers stay per family: the permanent v2.4 entry
 	//    writes only its model field (a variant swap must never touch a user's custom
 	//    LabelPath, and its label set is embedded), while every other family writes
-	//    model/labels/embeddings, re-points a gallery-managed geomodel range-filter config
-	//    (a custom one is kept), and re-appends the Models.Enabled alias. A downloaded
+	//    model/labels/embeddings, re-points the range-filter config at the geomodel (see
+	//    rangeFilterReplaceableByGeomodel), and re-appends the Models.Enabled alias. A downloaded
 	//    variant's geomodel dependency also re-points the range filter, for the permanent
 	//    entry too.
 	mm.persistVariantConfig(entry, modelPath, labelsPath, embeddingsPath)
@@ -1564,9 +1588,9 @@ func (mm *ModelManager) replaceVariant(ctx context.Context, entry *CatalogEntry,
 		if reloadErr := mm.orchestrator.ReloadForVariantSwap(entry.RegistryID); reloadErr != nil {
 			return mm.rollbackVariant(log, entry, old, newVariantID, reloadErr, false, progress)
 		}
-		// A target that brings a geomodel (inline for Perch and BirdNET v3.0, or through a
-		// dependency) had its gallery-managed range filter re-pointed in step 3 (a custom one
-		// is kept); reload it, exactly as hotLoadAfterInstall does after an install. The v2.4
+		// A target that brings a geomodel (through its birdnet-geomodel-v3 dependency, or inline
+		// in a hand-edited catalog) had its range filter re-pointed in step 3 (see
+		// rangeFilterReplaceableByGeomodel); reload it, exactly as hotLoadAfterInstall does after an install. The v2.4
 		// anchor reloads its own range filter inside reloadEntry; that is separate from the
 		// geomodel reload here, which only runs for a target that supplies a geomodel.
 		if ProvidesGeomodel(entry, newVariantID) {
@@ -1706,10 +1730,11 @@ func (mm *ModelManager) rollbackVariant(log logger.Logger, entry *CatalogEntry, 
 // writer by family: the permanent BirdNET v2.4 entry writes ONLY its model field (and
 // clears it for the embedded baseline), because a variant swap must never touch a user's
 // custom LabelPath and its label set is embedded; every other family writes
-// model/labels/embeddings, re-points a gallery-managed geomodel range-filter config (a
-// custom one is kept), and re-appends the Models.Enabled alias. A downloaded variant's
-// geomodel dependency re-points the range filter in both branches. Shared by the swap and both rollback paths so config is
-// persisted and restored identically.
+// model/labels/embeddings, re-points the range-filter config at the geomodel (see
+// rangeFilterReplaceableByGeomodel), and re-appends the Models.Enabled alias. A
+// downloaded variant's geomodel dependency re-points the range filter in both branches.
+// Shared by the swap and both rollback paths so config is persisted and restored
+// identically.
 func (mm *ModelManager) persistVariantConfig(entry *CatalogEntry, modelPath, labelsPath, embeddingsPath string) {
 	if IsPermanentEntry(entry) {
 		var rangeFilter *CatalogEntry
@@ -1760,11 +1785,12 @@ func ensureModelEnabled(s *conf.Settings, registryID string) bool {
 // variant swap. It writes ONLY the family's model field: a family's label set is
 // identical across its variants (embedded for BirdNET v2.4), so a swap must never
 // disturb a user-configured label path. An empty modelPath reverts to the family's
-// built-in/default source (for the primary, the embedded BuiltIn baseline). When
-// rangeFilter is non-nil (the geomodel dependency of the new variant) the gallery-managed
-// range-filter config is re-pointed at its files in the same clone and save; a custom
-// range filter is kept. It publishes through conf.UpdateSettings, then saves. A nil
-// settings receiver or an unknown registry ID is a no-op (nothing stored, nothing saved).
+// built-in/default source (for BirdNET v2.4, the embedded BuiltIn baseline). When
+// rangeFilter is non-nil (the geomodel dependency of the new variant) the range-filter
+// config is re-pointed at its files in the same clone and save, as
+// rangeFilterReplaceableByGeomodel allows. It publishes through conf.UpdateSettings,
+// then saves. A nil settings receiver or an unknown registry ID is a no-op (nothing
+// stored, nothing saved).
 func (mm *ModelManager) applyConfigForVariantSwap(registryID, modelPath string, rangeFilter *CatalogEntry) {
 	if mm.settings == nil {
 		return
@@ -2259,9 +2285,9 @@ func (mm *ModelManager) removeDownloading(catalogID string) {
 // the gallery, so install, startup promote and uninstall may rewrite it: an empty
 // path, or a geomodel file name of the active catalog in a "shared" directory under a
 // directory named like the models directory (the same layout test, and rationale, as
-// Orchestrator.isGalleryManagedPath). Install, startup promote and uninstall leave
-// any other path untouched as a custom range filter. Reads only the catalog snapshot,
-// so it is safe inside a conf.UpdateSettings mutate function and under mm.mu.
+// Orchestrator.isGalleryManagedPath). Uninstall leaves any other path untouched.
+// Reads only the catalog snapshot, so it is safe inside a conf.UpdateSettings mutate
+// function and under mm.mu.
 func (mm *ModelManager) rangeFilterGalleryManaged(rf *conf.RangeFilterSettings) bool {
 	if rf.ModelPath == "" {
 		return true
@@ -2283,6 +2309,17 @@ func (mm *ModelManager) rangeFilterGalleryManaged(rf *conf.RangeFilterSettings) 
 	return isCatalogGeomodelName(filepath.Base(rf.ModelPath))
 }
 
+// rangeFilterReplaceableByGeomodel reports whether installing or promoting a geomodel
+// may rewrite the range filter config: a gallery-managed path (rangeFilterGalleryManaged)
+// or a stock MData model in any directory (isStockMDataRangeFilterPath), so an installed
+// geomodel always takes precedence over stock MData. It ignores rf.Model, so a legacy pin
+// is replaced too. Uninstall keeps the strict rangeFilterGalleryManaged test, so it never
+// clears a stock MData path it cannot replace. Safe inside a conf.UpdateSettings mutate
+// function and under mm.mu.
+func (mm *ModelManager) rangeFilterReplaceableByGeomodel(rf *conf.RangeFilterSettings) bool {
+	return mm.rangeFilterGalleryManaged(rf) || isStockMDataRangeFilterPath(rf.ModelPath)
+}
+
 // isCatalogGeomodelName reports whether name is the LocalName of a geomodel-role
 // file in any entry or variant of the active catalog.
 func isCatalogGeomodelName(name string) bool {
@@ -2301,8 +2338,8 @@ func isCatalogGeomodelName(name string) bool {
 // applyRangeFilterConfigForInstall points the range filter at entry's geomodel
 // companion files under {modelsDir}/shared when the entry carries them. It writes
 // into updated (a settings clone); the caller stores and saves. A no-op for an
-// entry without geomodel files and for a custom range filter (see
-// rangeFilterGalleryManaged). Both role paths are cleared before the entry's
+// entry without geomodel files and for a range filter that
+// rangeFilterReplaceableByGeomodel keeps. Both role paths are cleared before the entry's
 // files are written, so a half-tuple entry (only one geomodel role) leaves the
 // omitted role's path empty rather than at a stale earlier value.
 func (mm *ModelManager) applyRangeFilterConfigForInstall(updated *conf.Settings, entry *CatalogEntry) {
@@ -2310,7 +2347,7 @@ func (mm *ModelManager) applyRangeFilterConfigForInstall(updated *conf.Settings,
 		return
 	}
 	rf := updated.RangeFilterConfig()
-	if !mm.rangeFilterGalleryManaged(rf) {
+	if !mm.rangeFilterReplaceableByGeomodel(rf) {
 		return
 	}
 	rf.Model = entry.GeomodelVersion
@@ -2334,9 +2371,9 @@ func (mm *ModelManager) applyRangeFilterConfigForInstall(updated *conf.Settings,
 // applyRangeFilterConfigForUninstall keeps the shared geomodel range-filter config
 // pointing at files that exist after an uninstall. When another installed entry still
 // carries a full geomodel tuple it re-points the config at that survivor's files (via
-// applyRangeFilterConfigForInstall); otherwise it clears the config. A custom range
-// filter (see rangeFilterGalleryManaged) is neither re-pointed nor cleared, matching
-// applyRangeFilterConfigForInstall on the install side. mm.installed must no longer
+// applyRangeFilterConfigForInstall); otherwise it clears the config. A range filter
+// that is not gallery-managed (see rangeFilterGalleryManaged), custom or stock MData,
+// is neither re-pointed nor cleared. mm.installed must no longer
 // contain the uninstalled entry; caller holds mm.mu. It writes into updated (a settings
 // clone), and is a no-op for an entry without geomodel files.
 func (mm *ModelManager) applyRangeFilterConfigForUninstall(updated *conf.Settings, entry *CatalogEntry) {
@@ -2418,8 +2455,8 @@ func (mm *ModelManager) applyConfigForInstall(entry *CatalogEntry, modelPath, la
 			}
 		}
 
-		// Apply geomodel range filter config if this entry includes geomodel files and the
-		// range filter is not custom. An entry without inline geomodel files takes it from
+		// Apply geomodel range filter config if this entry includes geomodel files and
+		// rangeFilterReplaceableByGeomodel allows it. An entry without inline geomodel files takes it from
 		// its geomodel dependency, if the installed variant has one.
 		mm.applyRangeFilterConfigForInstall(updated, entry)
 		if !hasGeomodelTuple(entry) {
@@ -2523,8 +2560,8 @@ func (mm *ModelManager) applyConfigForUninstall(entry *CatalogEntry) {
 			}
 		}
 
-		// Re-point or reset a gallery-managed geomodel range filter config (a custom one is
-		// kept); it is reset only when no other geomodel-dependent model remains.
+		// Re-point or reset a gallery-managed geomodel range filter config (a custom or stock
+		// MData one is kept); it is reset only when no other geomodel-dependent model remains.
 		// mm.installed no longer contains the uninstalled entry (deleted by caller).
 		mm.applyRangeFilterConfigForUninstall(updated, entry)
 
@@ -2665,6 +2702,56 @@ func (mm *ModelManager) downloadModelFile(ctx context.Context, catalogID, repo, 
 		Build()
 }
 
+// getHuggingFace issues a GET for url and returns the response when the host
+// answers 200; the caller closes the body. A transport failure and a non-200
+// status come back as an endpointAttemptError that records whether another
+// endpoint might serve the file, so downloadFile and the document fetch fail
+// over the same way. The "HTTP request failed for" and "HTTP <status> for"
+// texts are matched by the frontend and must not change.
+func getHuggingFace(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, errors.Newf("failed to create request for %s: %v", url, err).
+			Component("classifier.model_manager").
+			Category(errors.CategoryValidation).
+			Context("operation", "build_huggingface_request").
+			Context("url", url).
+			Build()
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		// A transport failure (unreachable host, reset, timeout) is retryable on
+		// the next endpoint; a cancelled context is not (IsUnreachable handles the
+		// distinction).
+		return nil, &endpointAttemptError{
+			retryable: conf.IsUnreachable(err),
+			err: errors.Newf("HTTP request failed for %s: %v", url, err).
+				Component("classifier.model_manager").
+				Category(errors.CategoryNetwork).
+				Context("operation", "huggingface_request").
+				Context("url", url).
+				Build(),
+		}
+	}
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		// A gateway status (502/503/504) means the origin is down and a mirror
+		// may still serve the file, so it is retryable; any other status (404,
+		// 403, 500, ...) means the host answered and failover would mask it.
+		return nil, &endpointAttemptError{
+			retryable: conf.IsGatewayStatus(resp.StatusCode),
+			err: errors.Newf("HTTP %d for %s", resp.StatusCode, url).
+				Component("classifier.model_manager").
+				Category(errors.CategoryNetwork).
+				Context("operation", "huggingface_status").
+				Context("url", url).
+				Context("status", fmt.Sprintf("%d", resp.StatusCode)).
+				Build(),
+		}
+	}
+	return resp, nil
+}
+
 // downloadFile downloads a file from url to destPath, verifying the SHA256
 // checksum. The catalogID is used to update shared download state for SSE
 // polling. completedBytes is the cumulative size of previously downloaded
@@ -2701,44 +2788,11 @@ func (mm *ModelManager) downloadFile(ctx context.Context, catalogID, url, destPa
 		}
 	}()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	resp, err := getHuggingFace(ctx, downloadHTTPClient, url)
 	if err != nil {
-		return errors.Newf("failed to create request for %s: %v", url, err).
-			Component("classifier.model_manager").
-			Category(errors.CategoryValidation).
-			Context("url", url).
-			Build()
-	}
-	resp, err := downloadHTTPClient.Do(req)
-	if err != nil {
-		// A transport failure (unreachable host, reset, timeout) is retryable on
-		// the next endpoint; a cancelled context is not (IsUnreachable handles the
-		// distinction).
-		return &endpointAttemptError{
-			retryable: conf.IsUnreachable(err),
-			err: errors.Newf("HTTP request failed for %s: %v", url, err).
-				Component("classifier.model_manager").
-				Category(errors.CategoryNetwork).
-				Context("url", url).
-				Build(),
-		}
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		// A gateway status (502/503/504) means the origin is down and a mirror
-		// may still serve the file, so it is retryable; any other status (404,
-		// 403, 500, ...) means the host answered and failover would mask it.
-		return &endpointAttemptError{
-			retryable: conf.IsGatewayStatus(resp.StatusCode),
-			err: errors.Newf("HTTP %d for %s", resp.StatusCode, url).
-				Component("classifier.model_manager").
-				Category(errors.CategoryNetwork).
-				Context("url", url).
-				Context("status", fmt.Sprintf("%d", resp.StatusCode)).
-				Build(),
-		}
-	}
 
 	var hasher hash.Hash
 	var reader io.Reader
@@ -2831,15 +2885,24 @@ func (mm *ModelManager) downloadFile(ctx context.Context, catalogID, url, destPa
 	return nil
 }
 
-// huggingFaceResolveMainPath is the HuggingFace file-resolve path segment for a
-// repository's main revision, sitting between the repo id and the file path.
-const huggingFaceResolveMainPath = "/resolve/main/"
+// huggingFaceResolvePath is the HuggingFace file-resolve path segment between the
+// repo id and the revision.
+const huggingFaceResolvePath = "/resolve/"
+
+// huggingFaceMainRevision is the revision model files are downloaded from.
+const huggingFaceMainRevision = "main"
 
 // buildHuggingFaceURL constructs the download URL for a file in a HuggingFace
 // repo. The endpoint is one host from the resolved download chain (see
 // orderedDownloadEndpoints / downloadModelFile) and must not end in a slash.
 func buildHuggingFaceURL(endpoint, repo, filePath string) string {
-	return endpoint + "/" + repo + huggingFaceResolveMainPath + filePath
+	return buildHuggingFaceRevisionURL(endpoint, repo, huggingFaceMainRevision, filePath)
+}
+
+// buildHuggingFaceRevisionURL constructs the URL of a file in a HuggingFace repo
+// at a pinned revision (a commit hash), for content that must not move with main.
+func buildHuggingFaceRevisionURL(endpoint, repo, revision, filePath string) string {
+	return endpoint + "/" + repo + huggingFaceResolvePath + revision + "/" + filePath
 }
 
 // huggingFaceEndpoint resolves the single primary HuggingFace host from the
