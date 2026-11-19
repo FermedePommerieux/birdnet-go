@@ -38,11 +38,16 @@ var (
 var ovActiveClassifiers atomic.Int64
 
 // OpenVINO device names accepted by OpenVINOClassifierOptions.Device. They are
-// the device strings the OpenVINO backend expects ("CPU", "GPU").
+// the device strings the OpenVINO backend expects ("CPU", "GPU"); a concrete
+// "GPU.<n>" name (see OpenVINOIsGPUDevice) is accepted as well.
 const (
 	OVDeviceCPU = ov.DeviceCPU
 	OVDeviceGPU = ov.DeviceGPU
 )
+
+// OpenVINOIsGPUDevice reports whether an enumerated OpenVINO device name is a GPU:
+// the bare "GPU" or a concrete "GPU.<n>".
+func OpenVINOIsGPUDevice(name string) bool { return ov.IsGPUDevice(name) }
 
 // OVPrecisionF32 is the INFERENCE_PRECISION_HINT for full f32 inference, used to
 // override the f16 default where the GPU plugin miscompiles a model at f16.
@@ -53,7 +58,7 @@ type OpenVINOClassifierOptions struct {
 	Labels        []string // species labels; required (validated against model output)
 	Threads       int      // INFERENCE_NUM_THREADS; 0 = OpenVINO auto-tune (CPU only)
 	PrecisionHint string   // INFERENCE_PRECISION_HINT; "" defaults to f16
-	Device        string   // ov.DeviceCPU (default) or ov.DeviceGPU
+	Device        string   // ov.DeviceCPU (default), ov.DeviceGPU or a concrete "GPU.<n>"
 	OutputIndex   int      // logits output port index; 0 default, 3 for Perch v2
 }
 
@@ -99,8 +104,11 @@ func NewOpenVINOClassifier(modelPath string, opts OpenVINOClassifierOptions) (Cl
 }
 
 // OpenVINOHasDevice reports whether the named OpenVINO device (e.g. ov.DeviceGPU)
-// is available. It returns false on any error (backend not compiled in, core not
-// initialized, or query failure), so callers can use it as a plain gate.
+// is available. A GPU request matches by class: any enumerated "GPU" or "GPU.<n>"
+// satisfies it, because a host with several GPUs lists only the indexed names.
+// Other names must match exactly. It returns false on any error (backend not
+// compiled in, core not initialized, or query failure), so callers can use it as
+// a plain gate.
 //
 // It never enumerates devices in-process: ov_core_get_available_devices walks
 // the vendor driver stack, and a fault there aborts the whole process (issue
@@ -114,7 +122,13 @@ func OpenVINOHasDevice(name string) bool {
 	if status != ovProbeCached {
 		return false
 	}
-	return err == nil && slices.Contains(devs, name)
+	if err != nil {
+		return false
+	}
+	if name == OVDeviceGPU {
+		return slices.ContainsFunc(devs, OpenVINOIsGPUDevice)
+	}
+	return slices.Contains(devs, name)
 }
 
 // EnsureOpenVINOProbe runs the out-of-process device probe for the library the
@@ -186,7 +200,7 @@ func (c *openvinoClassifier) Close() {
 type OpenVINOEmbeddingExtractorOptions struct {
 	Threads       int    // INFERENCE_NUM_THREADS; 0 = OpenVINO auto-tune (CPU only)
 	PrecisionHint string // INFERENCE_PRECISION_HINT; "" defaults to f16
-	Device        string // ov.DeviceCPU (default) or ov.DeviceGPU
+	Device        string // ov.DeviceCPU (default), ov.DeviceGPU or a concrete "GPU.<n>"
 	OutputIndex   int    // embedding output port index (e.g. 1 for birdnet-v24-embeddings)
 	ExpectedDim   int    // required embedding element count; validated against the model
 }
